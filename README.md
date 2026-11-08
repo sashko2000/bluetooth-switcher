@@ -43,7 +43,8 @@ If a connected device reports its battery level, it is shown in the menu item
 1. The value Windows shows in Settings → Bluetooth & devices (Hands-Free speakers and headsets, many BLE devices).
 2. The standard GATT Battery Service for BLE devices.
 3. The device's HID reports: standard Battery Strength / Absolute State Of Charge usages and Apple's
-   report `0x90` — this is how the battery of Apple Magic Keyboard / Mouse / Trackpad is read.
+   report `0x90` — this is how the battery of Apple Magic Keyboard is read (other Apple Bluetooth devices
+   that use the same report should work too, but have not been tested).
 
 When the level drops to the configured threshold (15% by default, 0 turns it off), a notification is shown.
 
@@ -56,13 +57,22 @@ top row do not work. Apple's Boot Camp keyboard driver fixes that, and the app c
 
 - The driver is **not shipped with the app**: it is Apple's proprietary software. The app downloads the official
   Boot Camp 6.1.14 update from Apple's servers, verifies its SHA-256, extracts the keyboard driver
-  (`AppleKeyboardMagic2`, version 6.1.8086.4 — the first one that knows the 2021 keyboards, e.g. A2450) and
-  installs it with `pnputil`. Administrator rights are required. Apple's Boot Camp license terms apply.
+  (`AppleKeyboardMagic2`, version 6.1.8086.4, which knows the 2021 keyboards, e.g. A2450) and installs it with
+  `pnputil`. An internet connection and administrator rights are required. Apple's Boot Camp license terms apply.
 - **Top row keys** lets you choose the default behavior: F1–F12 with media on Fn, or media keys with F1–F12 on Fn
-  (the driver's `OSXFnBehavior` setting). Reconnect the keyboard from the tray menu or restart Windows to apply.
+  (the driver's `OSXFnBehavior` setting, Mac behavior after installation). The driver reads it only when it starts,
+  so the app restarts the keyboard right away to apply the change (`pnputil /restart-device`).
 - The lock key (top right on 2021 models) is not handled by the driver.
 - To remove the driver: Device Manager → the keyboard (“Apple Keyboard”) → Uninstall device → check
   “Attempt to remove the driver for this device”, then reconnect the keyboard.
+
+## Settings
+
+- **Devices** shown in the tray menu, and for each Classic device the **services to reconnect** when it is
+  already connected (Automatic, or a manual selection).
+- **Apple Magic Keyboard** driver and top row behavior (see above).
+- **Language**, **connection timeout**, **low battery warning** threshold, notifications on success,
+  and **start with Windows**.
 
 ## Languages
 
@@ -79,6 +89,8 @@ to `Strings.<culture>.resx` (e.g. `Strings.de.resx`), translate the values and a
 - .NET 10 SDK, Visual Studio 2026 / Rider / `dotnet` CLI
 - The device must be **paired beforehand** with each computer (on its own channel for multi-host keyboards).
   Install the app on every computer you want to pull the keyboard to.
+- NuGet restores the only third-party dependency, [SharpCompress](https://github.com/adamhathcock/sharpcompress)
+  (MIT), used to extract Apple's driver package.
 
 ## Build and run
 
@@ -122,6 +134,7 @@ src/BluetoothSwitcher/
 │  ├─ NativeBluetooth.cs          — P/Invoke to bthprops.cpl (service reinstall)
 │  ├─ BatteryReader.cs            — battery level: Windows property, BLE GATT
 │  ├─ HidBatteryReader.cs         — battery level from HID reports (incl. Apple)
+│  ├─ HidNative.cs                — shared hid.dll interop, HID collection lookup
 │  └─ Models.cs
 ├─ Infrastructure/                — settings, log, autostart, UAC
 ├─ Keyboard/
@@ -135,8 +148,4 @@ src/BluetoothSwitcher/
 
 ## Support the project
 
-If you find the app useful, you can buy the author a coffee:
-
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-sashko2000-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/sashko2000)
-
-☕ [buymeacoffee.com/sashko2000](https://buymeacoffee.com/sashko2000)
+If you find the app useful, you can [buy the author a coffee ☕](https://buymeacoffee.com/sashko2000).
