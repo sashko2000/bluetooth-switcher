@@ -172,6 +172,11 @@ src/BluetoothSwitcher/
    └─ TrayIconFactory.cs          — icon drawn at runtime
 ```
 
+## License
+
+[MIT](LICENSE). Apple's Boot Camp keyboard driver is not part of this project: it is downloaded from Apple on demand
+and is covered by Apple's own license terms.
+
 ## Support the project
 
 If you find the app useful, you can [buy the author a coffee ☕](https://buymeacoffee.com/sashko2000).
