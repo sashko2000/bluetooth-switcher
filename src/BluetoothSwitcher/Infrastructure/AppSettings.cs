@@ -5,19 +5,27 @@ namespace BluetoothSwitcher.Infrastructure;
 
 public sealed class AppSettings
 {
-    /// <summary>Устройства, которые показываются в меню трея.</summary>
+    /// <summary>Devices shown in the tray menu.</summary>
     public List<SavedDevice> Devices { get; set; } = [];
 
-    /// <summary>Сколько секунд ждать подключения после переустановки сервиса.</summary>
+    /// <summary>How many seconds to wait for a connection after reinstalling services.</summary>
     public int ConnectTimeoutSeconds { get; set; } = 20;
 
     public bool ShowNotifications { get; set; } = true;
+
+    /// <summary>Warn when a connected device's battery drops to this level, in percent; 0 turns the warning off.</summary>
+    public int LowBatteryThreshold { get; set; } = 15;
+
+    /// <summary>UI language code ("en", "ru", "uk"); empty means the Windows display language.</summary>
+    public string Language { get; set; } = "";
 
     public AppSettings Clone() => new()
     {
         Devices = Devices.Select(d => d with { Services = d.Services?.ToList() }).ToList(),
         ConnectTimeoutSeconds = ConnectTimeoutSeconds,
         ShowNotifications = ShowNotifications,
+        LowBatteryThreshold = LowBatteryThreshold,
+        Language = Language,
     };
 }
 
@@ -37,13 +45,14 @@ internal static class SettingsStore
                 if (settings is not null)
                 {
                     settings.ConnectTimeoutSeconds = Math.Clamp(settings.ConnectTimeoutSeconds, 5, 120);
+                    settings.LowBatteryThreshold = Math.Clamp(settings.LowBatteryThreshold, 0, 50);
                     return settings;
                 }
             }
         }
         catch (Exception ex)
         {
-            Log.Error("Не удалось прочитать настройки", ex);
+            Log.Error("Failed to read settings", ex);
         }
 
         return new AppSettings();

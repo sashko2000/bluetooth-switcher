@@ -2,7 +2,7 @@ using Microsoft.Win32;
 
 namespace BluetoothSwitcher.Infrastructure;
 
-/// <summary>Автозапуск через HKCU\...\Run (без прав администратора).</summary>
+/// <summary>Autostart via HKCU\...\Run (no administrator rights required).</summary>
 internal static class AutoStart
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";

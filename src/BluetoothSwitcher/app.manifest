@@ -4,8 +4,8 @@
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
-        <!-- Обычный запуск. Если Windows потребует прав администратора для
-             переустановки HID-сервиса, приложение предложит перезапуск с повышением. -->
+        <!-- Normal launch. If Windows requires administrator rights to reinstall
+             device services, the app offers to restart elevated. -->
         <requestedExecutionLevel level="asInvoker" uiAccess="false" />
       </requestedPrivileges>
     </security>

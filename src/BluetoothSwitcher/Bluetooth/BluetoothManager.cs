@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using BluetoothSwitcher.Infrastructure;
+using BluetoothSwitcher.Localization;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Devices.Enumeration;
@@ -13,7 +14,7 @@ public static class BluetoothManager
     private const uint CodPointingBit = 0x80;
     private const ushort LeAppearanceKeyboard = 0x03C1;
 
-    /// <summary>Все сопряжённые с компьютером устройства (Classic и BLE).</summary>
+    /// <summary>All devices paired with this computer (Classic and BLE).</summary>
     public static async Task<IReadOnlyList<PairedDeviceInfo>> GetPairedDevicesAsync()
     {
         var result = new List<PairedDeviceInfo>();
@@ -33,10 +34,10 @@ public static class BluetoothManager
                 bool isPeripheral = ((cod >> 8) & 0x1F) == CodMajorPeripheral;
                 bool isKeyboard = isPeripheral && (cod & CodKeyboardBit) != 0;
                 string kind = !isPeripheral ? DescribeMajorClass(device.ClassOfDevice.MajorClass)
-                    : isKeyboard && (cod & CodPointingBit) != 0 ? "Клавиатура + мышь"
-                    : isKeyboard ? "Клавиатура"
-                    : (cod & CodPointingBit) != 0 ? "Мышь"
-                    : "Периферия";
+                    : isKeyboard && (cod & CodPointingBit) != 0 ? Strings.KindKeyboardMouse
+                    : isKeyboard ? Strings.KindKeyboard
+                    : (cod & CodPointingBit) != 0 ? Strings.KindMouse
+                    : Strings.KindPeripheral;
 
                 result.Add(new PairedDeviceInfo(
                     device.BluetoothAddress,
@@ -48,7 +49,7 @@ public static class BluetoothManager
             }
             catch (Exception ex)
             {
-                Log.Error($"Ошибка чтения Classic-устройства {di.Name}", ex);
+                Log.Error($"Failed to read Classic device {di.Name}", ex);
             }
         }
 
@@ -70,11 +71,11 @@ public static class BluetoothManager
                     IsLowEnergy: true,
                     IsConnected: device.ConnectionStatus == BluetoothConnectionStatus.Connected,
                     isKeyboard,
-                    isKeyboard ? "Клавиатура (BLE)" : "BLE-устройство"));
+                    isKeyboard ? Strings.KindKeyboardBle : Strings.KindBleDevice));
             }
             catch (Exception ex)
             {
-                Log.Error($"Ошибка чтения BLE-устройства {di.Name}", ex);
+                Log.Error($"Failed to read BLE device {di.Name}", ex);
             }
         }
 
@@ -86,22 +87,22 @@ public static class BluetoothManager
 
     private static string DescribeMajorClass(BluetoothMajorClass major) => major switch
     {
-        BluetoothMajorClass.AudioVideo => "Аудио (колонка/наушники)",
-        BluetoothMajorClass.Computer => "Компьютер",
-        BluetoothMajorClass.Phone => "Телефон",
-        BluetoothMajorClass.Imaging => "Принтер/камера",
-        BluetoothMajorClass.Wearable => "Носимое устройство",
-        BluetoothMajorClass.Health => "Здоровье",
-        BluetoothMajorClass.Toy => "Игрушка",
-        BluetoothMajorClass.NetworkAccessPoint => "Точка доступа",
-        _ => "Другое",
+        BluetoothMajorClass.AudioVideo => Strings.KindAudio,
+        BluetoothMajorClass.Computer => Strings.KindComputer,
+        BluetoothMajorClass.Phone => Strings.KindPhone,
+        BluetoothMajorClass.Imaging => Strings.KindImaging,
+        BluetoothMajorClass.Wearable => Strings.KindWearable,
+        BluetoothMajorClass.Health => Strings.KindHealth,
+        BluetoothMajorClass.Toy => Strings.KindToy,
+        BluetoothMajorClass.NetworkAccessPoint => Strings.KindAccessPoint,
+        _ => Strings.KindOther,
     };
 
     /// <summary>
-    /// Если устройство не подключено — подключает его к этому компьютеру
-    /// (в том числе «перетягивает» с другого хоста).
-    /// Если подключено — выполняет полное переподключение (отключить → подключить),
-    /// например чтобы колонка снова «вспомнила» про микрофон.
+    /// If the device is not connected, connects it to this computer
+    /// (including "pulling" it away from another host).
+    /// If it is connected, performs a full reconnect (disconnect → connect),
+    /// e.g. so that a speaker "remembers" its microphone again.
     /// </summary>
     public static Task<ReconnectResult> ReconnectAsync(SavedDevice device, TimeSpan timeout, CancellationToken ct = default) =>
         device.IsLowEnergy
@@ -113,7 +114,7 @@ public static class BluetoothManager
         using var device = await BluetoothDevice.FromBluetoothAddressAsync(saved.Address).AsTask(ct);
         if (device is null)
         {
-            return new(ReconnectOutcome.DeviceNotFound, $"«{saved.DisplayName}» не найдено среди сопряжённых устройств.");
+            return new(ReconnectOutcome.DeviceNotFound, Strings.ResultNotFound(saved.DisplayName));
         }
 
         bool IsConnected() => device.ConnectionStatus == BluetoothConnectionStatus.Connected;
@@ -122,36 +123,34 @@ public static class BluetoothManager
 
         if (!wasConnected)
         {
-            // Шаг 1. Мягкая попытка: SDP-запрос без кэша заставляет адаптер «позвать» (page) устройство.
-            // Многим клавиатурам этого достаточно, и Windows сразу поднимает HID-канал.
-            Log.Info($"[{saved.DisplayName}] шаг 1: запрос SDP без кэша");
+            // Step 1. Soft attempt: an uncached SDP query makes the adapter page the device.
+            // For many keyboards this is enough, and Windows brings up the HID channel right away.
+            Log.Info($"[{saved.DisplayName}] step 1: uncached SDP query");
             await PageDeviceAsync(device, saved, ct);
 
-            // SDP сам по себе ненадолго поднимает соединение — поэтому проверяем, что оно держится.
+            // SDP itself briefly brings up a connection, so make sure the connection actually holds.
             if (await WaitForStableConnectionAsync(IsConnected, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(4), ct))
             {
                 return Connected(saved);
             }
         }
 
-        // Шаг 2. Переустановка сервисов (= «Отключить → Подключить» в Windows).
-        Log.Info($"[{saved.DisplayName}] {(wasConnected ? "полное переподключение" : "шаг 2")}: переустановка сервисов");
+        // Step 2. Reinstall services (same as "Disconnect → Connect" in Windows Settings).
+        Log.Info($"[{saved.DisplayName}] {(wasConnected ? "full reconnect" : "step 2")}: reinstalling services");
         int error = await Task.Run(() => NativeBluetooth.ReinstallServices(saved.Address, TimeSpan.FromSeconds(1), saved.Services, full: !wasConnected), ct);
         switch (error)
         {
             case NativeBluetooth.ErrorSuccess:
                 break;
             case NativeBluetooth.ErrorAccessDenied:
-                return new(ReconnectOutcome.AccessDenied,
-                    "Windows не разрешила переустановить сервисы устройства без прав администратора. " +
-                    "Выберите в меню «Перезапустить от имени администратора».");
+                return new(ReconnectOutcome.AccessDenied, Strings.ResultAccessDenied);
             case NativeBluetooth.ErrorNoRadio:
-                return new(ReconnectOutcome.Failed, "Bluetooth-адаптер не найден или выключен.");
+                return new(ReconnectOutcome.Failed, Strings.ResultNoRadio);
             default:
-                return new(ReconnectOutcome.Failed, $"Ошибка Bluetooth API: {error}.");
+                return new(ReconnectOutcome.Failed, Strings.ResultApiError(error));
         }
 
-        // Даём стеку время применить изменения, чтобы не принять «старое» соединение за новое.
+        // Give the stack time to apply the change so the old connection is not mistaken for a new one.
         await Task.Delay(TimeSpan.FromSeconds(1), ct);
 
         var firstWait = TimeSpan.FromSeconds(Math.Min(6, timeout.TotalSeconds));
@@ -160,8 +159,8 @@ public static class BluetoothManager
             return wasConnected ? Reconnected(saved) : Connected(saved);
         }
 
-        // Windows не подключилась сама (бывает с аудиоустройствами) — подталкиваем ещё раз.
-        Log.Info($"[{saved.DisplayName}] повторный запрос SDP после переустановки");
+        // Windows did not connect on its own (happens with audio devices), so nudge it once more.
+        Log.Info($"[{saved.DisplayName}] repeating SDP query after reinstall");
         await PageDeviceAsync(device, saved, ct);
 
         if (await WaitForStableConnectionAsync(IsConnected, timeout - firstWait, TimeSpan.FromSeconds(2), ct))
@@ -189,20 +188,19 @@ public static class BluetoothManager
         using var device = await BluetoothLEDevice.FromBluetoothAddressAsync(saved.Address).AsTask(ct);
         if (device is null)
         {
-            return new(ReconnectOutcome.DeviceNotFound, $"«{saved.DisplayName}» не найдено среди сопряжённых устройств.");
+            return new(ReconnectOutcome.DeviceNotFound, Strings.ResultNotFound(saved.DisplayName));
         }
 
         bool IsConnected() => device.ConnectionStatus == BluetoothConnectionStatus.Connected;
 
         if (IsConnected())
         {
-            // Принудительно разорвать BLE-соединение через публичный API Windows нельзя.
-            return new(ReconnectOutcome.AlreadyConnected,
-                $"«{saved.DisplayName}» (BLE) уже подключено. Принудительное переподключение для BLE Windows не поддерживает.");
+            // The public Windows API offers no way to force-disconnect a BLE connection.
+            return new(ReconnectOutcome.AlreadyConnected, Strings.ResultBleAlreadyConnected(saved.DisplayName));
         }
 
-        // GattSession с MaintainConnection заставляет Windows активно подключаться к устройству,
-        // как только оно станет доступно (начнёт рекламировать себя этому хосту).
+        // A GattSession with MaintainConnection makes Windows actively connect to the device
+        // as soon as it becomes available (starts advertising to this host).
         using var session = await GattSession.FromDeviceIdAsync(device.BluetoothDeviceId).AsTask(ct);
         session.MaintainConnection = true;
         Log.Info($"[{saved.DisplayName}] BLE: MaintainConnection = true");
@@ -218,7 +216,7 @@ public static class BluetoothManager
 
         if (await WaitForStableConnectionAsync(IsConnected, timeout, TimeSpan.FromSeconds(2), ct))
         {
-            // Даём HID-драйверу Windows подхватить соединение, прежде чем отпустить сессию.
+            // Let the Windows HID driver take over the connection before releasing the session.
             await Task.Delay(TimeSpan.FromSeconds(3), ct);
             return Connected(saved);
         }
@@ -227,19 +225,17 @@ public static class BluetoothManager
     }
 
     private static ReconnectResult Connected(SavedDevice saved) =>
-        new(ReconnectOutcome.Connected, $"«{saved.DisplayName}» подключена к этому компьютеру.");
+        new(ReconnectOutcome.Connected, Strings.ResultConnected(saved.DisplayName));
 
     private static ReconnectResult Reconnected(SavedDevice saved) =>
-        new(ReconnectOutcome.Connected, $"«{saved.DisplayName}» переподключено.");
+        new(ReconnectOutcome.Connected, Strings.ResultReconnected(saved.DisplayName));
 
     private static ReconnectResult NotConnected(SavedDevice saved) =>
-        new(ReconnectOutcome.NotConnected,
-            $"«{saved.DisplayName}» не ответило. Проверьте, что устройство включено и рядом. " +
-            "Некоторые устройства принимают входящее подключение только на активном канале.");
+        new(ReconnectOutcome.NotConnected, Strings.ResultNotConnected(saved.DisplayName));
 
     /// <summary>
-    /// Ждёт, пока соединение не будет непрерывно держаться <paramref name="stableFor"/>.
-    /// Возвращает false, если за <paramref name="timeout"/> этого не произошло.
+    /// Waits until the connection has held continuously for <paramref name="stableFor"/>.
+    /// Returns false if that did not happen within <paramref name="timeout"/>.
     /// </summary>
     private static async Task<bool> WaitForStableConnectionAsync(
         Func<bool> isConnected, TimeSpan timeout, TimeSpan stableFor, CancellationToken ct)

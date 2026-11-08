@@ -1,6 +1,6 @@
 namespace BluetoothSwitcher.Infrastructure;
 
-/// <summary>Простой файловый лог в %AppData%\BluetoothSwitcher\log.txt.</summary>
+/// <summary>Simple file log at %AppData%\BluetoothSwitcher\log.txt.</summary>
 internal static class Log
 {
     private static readonly Lock Sync = new();
@@ -31,7 +31,7 @@ internal static class Log
         }
         catch
         {
-            // Логирование никогда не должно ронять приложение.
+            // Logging must never crash the application.
         }
     }
 }

@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace BluetoothSwitcher.UI;
 
-/// <summary>Рисует иконку трея в рантайме (синий квадрат с глифом клавиатуры), чтобы не таскать .ico.</summary>
+/// <summary>Draws the tray icon at runtime (blue square with a keyboard glyph) to avoid shipping an .ico file.</summary>
 internal static class TrayIconFactory
 {
     public static Icon Create(bool busy = false)
@@ -21,7 +21,7 @@ internal static class TrayIconFactory
             using var fill = new SolidBrush(busy ? Color.FromArgb(230, 140, 0) : Color.FromArgb(0, 103, 192));
             g.FillPath(fill, path);
 
-            // Segoe Fluent Icons (Win11) / Segoe MDL2 Assets (Win10): U+E765 — клавиатура.
+            // Segoe Fluent Icons (Win11) / Segoe MDL2 Assets (Win10): U+E765 is the keyboard glyph.
             var fontName = FontFamily.Families.Any(f => f.Name == "Segoe Fluent Icons") ? "Segoe Fluent Icons" : "Segoe MDL2 Assets";
             using var font = new Font(fontName, 17f, FontStyle.Regular, GraphicsUnit.Pixel);
             using var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };

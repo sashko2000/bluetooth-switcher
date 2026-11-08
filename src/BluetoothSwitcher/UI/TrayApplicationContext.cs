@@ -1,5 +1,6 @@
 using BluetoothSwitcher.Bluetooth;
 using BluetoothSwitcher.Infrastructure;
+using BluetoothSwitcher.Localization;
 
 namespace BluetoothSwitcher.UI;
 
@@ -14,6 +15,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly SynchronizationContext _ui;
     private readonly DeviceStatusMonitor _monitor = new();
     private readonly HashSet<string> _busy = [];
+    private readonly System.Windows.Forms.Timer _batteryTimer = new() { Interval = (int)TimeSpan.FromMinutes(5).TotalMilliseconds };
+    private Dictionary<string, int> _battery = [];
+    private DateTime _batteryRefreshedAt = DateTime.MinValue;
+    private bool _batteryRefreshing;
+    private readonly HashSet<string> _lowBatteryNotified = [];
 
     private AppSettings _settings;
     private SettingsForm? _settingsForm;
@@ -21,9 +27,10 @@ internal sealed class TrayApplicationContext : ApplicationContext
     public TrayApplicationContext()
     {
         _settings = SettingsStore.Load();
+        AppLanguage.Apply(_settings.Language);
 
         _menu = new ContextMenuStrip();
-        // ContextMenuStrip — это Control, после его создания установлен WindowsFormsSynchronizationContext.
+        // ContextMenuStrip is a Control; once it is created, WindowsFormsSynchronizationContext is installed.
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
 
         _iconNormal = TrayIconFactory.Create();
@@ -38,15 +45,37 @@ internal sealed class TrayApplicationContext : ApplicationContext
         };
         _tray.MouseDoubleClick += OnTrayDoubleClick;
 
-        _monitor.StatusChanged += (_, _) => _ui.Post(_ => RebuildMenu(), null);
+        _monitor.StatusChanged += (_, _) => _ui.Post(_ =>
+        {
+            RebuildMenu();
+            // Windows publishes the battery level a few seconds after the device connects.
+            _ = RefreshBatteryAsync(TimeSpan.FromSeconds(5));
+        }, null);
+
+        // Battery: refresh when the menu opens (at most every 30 s) and every 5 minutes for the tooltip.
+        _menu.Opening += (_, _) =>
+        {
+            if (DateTime.UtcNow - _batteryRefreshedAt > TimeSpan.FromSeconds(30))
+            {
+                _ = RefreshBatteryAsync();
+            }
+        };
+        _batteryTimer.Tick += (_, _) => _ = RefreshBatteryAsync();
+        _batteryTimer.Start();
 
         RebuildMenu();
-        _ = RefreshMonitorAsync();
+        _ = InitializeStatusAsync();
 
         if (_settings.Devices.Count == 0)
         {
-            Notify("Выберите клавиатуру", "Откройте «Настройки» в меню значка в трее и отметьте устройство.", ToolTipIcon.Info);
+            Notify(Strings.TraySelectDeviceTitle, Strings.TraySelectDeviceText, ToolTipIcon.Info);
         }
+    }
+
+    private async Task InitializeStatusAsync()
+    {
+        await RefreshMonitorAsync();
+        await RefreshBatteryAsync();
     }
 
     private async Task RefreshMonitorAsync()
@@ -57,7 +86,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
         catch (Exception ex)
         {
-            Log.Error("Ошибка обновления монитора состояния", ex);
+            Log.Error("Failed to refresh the status monitor", ex);
         }
     }
 
@@ -69,7 +98,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         if (_settings.Devices.Count == 0)
         {
-            _menu.Items.Add(new ToolStripMenuItem("Нет выбранных устройств") { Enabled = false });
+            _menu.Items.Add(new ToolStripMenuItem(Strings.TrayNoDevices) { Enabled = false });
         }
 
         foreach (var device in _settings.Devices)
@@ -77,22 +106,25 @@ internal sealed class TrayApplicationContext : ApplicationContext
             bool busy = _busy.Contains(device.Key);
             bool? connected = _monitor.IsConnected(device);
 
-            string text = busy ? $"Подключение «{device.DisplayName}»…"
-                : connected == true ? $"Переподключить «{device.DisplayName}»"
-                : connected == null ? $"Подключить «{device.DisplayName}» (не найдено)"
-                : $"Подключить «{device.DisplayName}»";
+            string text = busy ? Strings.TrayConnecting(device.DisplayName)
+                : connected == true ? Strings.TrayReconnect(device.DisplayName)
+                : connected == null ? Strings.TrayConnectNotFound(device.DisplayName)
+                : Strings.TrayConnect(device.DisplayName);
+
+            if (!busy && connected == true && _battery.TryGetValue(device.Key, out int level))
+            {
+                text = Strings.TrayItemBattery(text, level);
+            }
 
             var item = new ToolStripMenuItem(text)
             {
                 Checked = connected == true,
                 Enabled = !busy,
-                ToolTipText = connected == true
-                    ? "Устройство подключено к этому компьютеру. Нажмите, чтобы отключить и подключить заново."
-                    : "Подключить устройство к этому компьютеру",
+                ToolTipText = connected == true ? Strings.TrayReconnectTooltip : Strings.TrayConnectTooltip,
             };
             if (_settings.Devices.Count == 1 && !busy)
             {
-                item.Font = new Font(item.Font, FontStyle.Bold); // действие по двойному клику
+                item.Font = new Font(item.Font, FontStyle.Bold); // double-click action
             }
 
             item.Click += async (_, _) => await ReconnectAsync(device);
@@ -100,19 +132,107 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
 
         _menu.Items.Add(new ToolStripSeparator());
-        _menu.Items.Add(new ToolStripMenuItem("Настройки…", null, (_, _) => ShowSettings()));
+        _menu.Items.Add(new ToolStripMenuItem(Strings.TraySettings, null, (_, _) => ShowSettings()));
 
         if (!Elevation.IsElevated)
         {
-            _menu.Items.Add(new ToolStripMenuItem("Перезапустить от имени администратора", null, (_, _) => RestartElevated()));
+            _menu.Items.Add(new ToolStripMenuItem(Strings.TrayRestartAsAdmin, null, (_, _) => RestartElevated()));
         }
 
-        _menu.Items.Add(new ToolStripMenuItem("Открыть лог", null, (_, _) => OpenLog()));
+        _menu.Items.Add(new ToolStripMenuItem(Strings.TrayOpenLog, null, (_, _) => OpenLog()));
         _menu.Items.Add(new ToolStripSeparator());
-        _menu.Items.Add(new ToolStripMenuItem("Выход", null, (_, _) => ExitThread()));
+        _menu.Items.Add(new ToolStripMenuItem(Strings.TrayExit, null, (_, _) => ExitThread()));
 
         _tray.Icon = _busy.Count > 0 ? _iconBusy : _iconNormal;
-        _tray.Text = _busy.Count > 0 ? $"{AppTitle} — подключение…" : AppTitle;
+        _tray.Text = BuildTooltip();
+    }
+
+    private string BuildTooltip()
+    {
+        var text = _busy.Count > 0 ? Strings.TrayTooltipBusy(AppTitle) : AppTitle;
+        foreach (var device in _settings.Devices)
+        {
+            if (_battery.TryGetValue(device.Key, out int level))
+            {
+                text += $"\n{device.DisplayName}: {level}%";
+            }
+        }
+
+        // NotifyIcon.Text is limited to 127 characters.
+        return text.Length <= 127 ? text : text[..126] + "…";
+    }
+
+    /// <summary>Re-reads battery levels of connected devices and updates the menu if anything changed.</summary>
+    private async Task RefreshBatteryAsync(TimeSpan delay = default)
+    {
+        if (delay > TimeSpan.Zero)
+        {
+            await Task.Delay(delay);
+        }
+
+        // All calls run on the UI thread, so a plain flag is enough to avoid overlapping refreshes.
+        if (_batteryRefreshing)
+        {
+            return;
+        }
+
+        _batteryRefreshing = true;
+        try
+        {
+            var levels = new Dictionary<string, int>();
+            foreach (var device in _settings.Devices.ToList())
+            {
+                // Only connected devices: Windows keeps a stale value after a disconnect.
+                if (_monitor.IsConnected(device) == true && await BatteryReader.TryGetLevelAsync(device) is int level)
+                {
+                    levels[device.Key] = level;
+                }
+            }
+
+            _batteryRefreshedAt = DateTime.UtcNow;
+            CheckLowBattery(levels);
+            bool changed = levels.Count != _battery.Count
+                || levels.Any(kv => !_battery.TryGetValue(kv.Key, out int old) || old != kv.Value);
+            _battery = levels;
+            if (changed)
+            {
+                RebuildMenu();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to refresh battery levels", ex);
+        }
+        finally
+        {
+            _batteryRefreshing = false;
+        }
+    }
+
+    /// <summary>One warning per device per discharge: re-armed once the level rises 5% above the threshold.</summary>
+    private void CheckLowBattery(Dictionary<string, int> levels)
+    {
+        int threshold = _settings.LowBatteryThreshold;
+        foreach (var device in _settings.Devices)
+        {
+            if (!levels.TryGetValue(device.Key, out int level))
+            {
+                continue;
+            }
+
+            if (threshold > 0 && level <= threshold)
+            {
+                if (_lowBatteryNotified.Add(device.Key))
+                {
+                    Log.Info($"Low battery: '{device.DisplayName}' {level}%");
+                    Notify(Strings.LowBatteryTitle, Strings.LowBatteryText(device.DisplayName, level), ToolTipIcon.Warning, force: true);
+                }
+            }
+            else if (level > threshold + 5)
+            {
+                _lowBatteryNotified.Remove(device.Key);
+            }
+        }
     }
 
     private async void OnTrayDoubleClick(object? sender, MouseEventArgs e)
@@ -142,25 +262,25 @@ internal sealed class TrayApplicationContext : ApplicationContext
         RebuildMenu();
         try
         {
-            Log.Info($"Переподключение «{device.DisplayName}» ({BluetoothAddress.Format(device.Address)}, LE={device.IsLowEnergy})");
+            Log.Info($"Reconnecting '{device.DisplayName}' ({BluetoothAddress.Format(device.Address)}, LE={device.IsLowEnergy})");
             var timeout = TimeSpan.FromSeconds(_settings.ConnectTimeoutSeconds);
             var result = await BluetoothManager.ReconnectAsync(device, timeout);
 
-            Log.Info($"Результат: {result.Outcome} — {result.Message}");
-            Notify(result.IsSuccess ? "Готово" : "Не удалось подключить",
+            Log.Info($"Result: {result.Outcome} — {result.Message}");
+            Notify(result.IsSuccess ? Strings.NotifyDone : Strings.NotifyFailed,
                 result.Message,
                 result.IsSuccess ? ToolTipIcon.Info : ToolTipIcon.Warning,
                 force: !result.IsSuccess);
         }
         catch (Exception ex)
         {
-            Log.Error("Ошибка переподключения", ex);
-            Notify("Ошибка", ex.Message, ToolTipIcon.Error, force: true);
+            Log.Error("Reconnect failed", ex);
+            Notify(Strings.NotifyError, ex.Message, ToolTipIcon.Error, force: true);
         }
         finally
         {
             _busy.Remove(device.Key);
-            // Объекты устройств пересоздаём: после переустановки сервиса старые могут перестать слать события.
+            // Recreate device objects: after a service reinstall the old ones may stop raising events.
             await RefreshMonitorAsync();
             RebuildMenu();
         }
@@ -185,18 +305,20 @@ internal sealed class TrayApplicationContext : ApplicationContext
             }
 
             _settings = result;
+            AppLanguage.Apply(_settings.Language);
             try
             {
                 SettingsStore.Save(_settings);
             }
             catch (Exception ex)
             {
-                Log.Error("Не удалось сохранить настройки", ex);
-                Notify("Ошибка", "Не удалось сохранить настройки: " + ex.Message, ToolTipIcon.Error, force: true);
+                Log.Error("Failed to save settings", ex);
+                Notify(Strings.NotifyError, Strings.NotifySaveFailed(ex.Message), ToolTipIcon.Error, force: true);
             }
 
             RebuildMenu();
             await RefreshMonitorAsync();
+            await RefreshBatteryAsync();
         };
         _settingsForm.Show();
         _settingsForm.Activate();
@@ -216,14 +338,14 @@ internal sealed class TrayApplicationContext : ApplicationContext
         {
             if (!File.Exists(Log.FilePath))
             {
-                Log.Info("Лог создан");
+                Log.Info("Log created");
             }
 
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Log.FilePath) { UseShellExecute = true });
         }
         catch (Exception ex)
         {
-            Log.Error("Не удалось открыть лог", ex);
+            Log.Error("Failed to open the log", ex);
         }
     }
 
@@ -246,6 +368,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         if (disposing)
         {
+            _batteryTimer.Dispose();
             _monitor.Dispose();
             _tray.Dispose();
             _menu.Dispose();

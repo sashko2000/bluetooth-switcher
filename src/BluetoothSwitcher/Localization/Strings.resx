@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="TraySelectDeviceTitle" xml:space="preserve">
+    <value>Select a device</value>
+  </data>
+  <data name="TraySelectDeviceText" xml:space="preserve">
+    <value>Open “Settings” from the tray icon menu and check a device.</value>
+  </data>
+  <data name="TrayNoDevices" xml:space="preserve">
+    <value>No devices selected</value>
+  </data>
+  <data name="TrayConnecting" xml:space="preserve">
+    <value>Connecting “{0}”…</value>
+  </data>
+  <data name="TrayReconnect" xml:space="preserve">
+    <value>Reconnect “{0}”</value>
+  </data>
+  <data name="TrayConnectNotFound" xml:space="preserve">
+    <value>Connect “{0}” (not found)</value>
+  </data>
+  <data name="TrayConnect" xml:space="preserve">
+    <value>Connect “{0}”</value>
+  </data>
+  <data name="TrayReconnectTooltip" xml:space="preserve">
+    <value>The device is connected to this computer. Click to disconnect and connect it again.</value>
+  </data>
+  <data name="TrayItemBattery" xml:space="preserve">
+    <value>{0} — battery {1}%</value>
+  </data>
+  <data name="LowBatteryTitle" xml:space="preserve">
+    <value>Low battery</value>
+  </data>
+  <data name="LowBatteryText" xml:space="preserve">
+    <value>“{0}”: {1}% left. Time to charge it.</value>
+  </data>
+  <data name="SettingsLowBattery" xml:space="preserve">
+    <value>Low battery warning at, % (0 — off):</value>
+  </data>
+  <data name="AppleGroup" xml:space="preserve">
+    <value>Apple Magic Keyboard</value>
+  </data>
+  <data name="AppleDriverInfo" xml:space="preserve">
+    <value>Apple’s Boot Camp driver adds the Fn key (Fn+Backspace = Delete, media keys) to Magic Keyboard 2015–2021. It is downloaded from Apple’s servers when you install it.</value>
+  </data>
+  <data name="AppleDriverInstalled" xml:space="preserve">
+    <value>Driver installed.</value>
+  </data>
+  <data name="AppleDriverNotInstalled" xml:space="preserve">
+    <value>Driver not installed.</value>
+  </data>
+  <data name="AppleDriverInstall" xml:space="preserve">
+    <value>Install driver</value>
+  </data>
+  <data name="AppleDriverReinstall" xml:space="preserve">
+    <value>Reinstall driver</value>
+  </data>
+  <data name="AppleDriverDownloading" xml:space="preserve">
+    <value>Downloading the driver from Apple…</value>
+  </data>
+  <data name="AppleDriverExtracting" xml:space="preserve">
+    <value>Extracting…</value>
+  </data>
+  <data name="AppleDriverInstalling" xml:space="preserve">
+    <value>Installing (confirm the administrator prompt if asked)…</value>
+  </data>
+  <data name="AppleDriverInstallDone" xml:space="preserve">
+    <value>Driver installed. Reconnect the keyboard to apply.</value>
+  </data>
+  <data name="AppleDriverInstallReboot" xml:space="preserve">
+    <value>Driver installed. Restart Windows to apply.</value>
+  </data>
+  <data name="AppleDriverUpToDate" xml:space="preserve">
+    <value>The driver is already installed and up to date.</value>
+  </data>
+  <data name="AppleDriverInstallNoDevice" xml:space="preserve">
+    <value>Driver added, but no connected keyboard uses it yet. Connect the Magic Keyboard and reconnect it.</value>
+  </data>
+  <data name="AppleDriverFailed" xml:space="preserve">
+    <value>Failed: {0}</value>
+  </data>
+  <data name="AppleDriverCancelled" xml:space="preserve">
+    <value>Cancelled.</value>
+  </data>
+  <data name="AppleFnLabel" xml:space="preserve">
+    <value>Top row keys:</value>
+  </data>
+  <data name="AppleFnStandard" xml:space="preserve">
+    <value>F1–F12 (media with Fn)</value>
+  </data>
+  <data name="AppleFnMedia" xml:space="preserve">
+    <value>Media keys (F1–F12 with Fn)</value>
+  </data>
+  <data name="AppleFnAppliedNow" xml:space="preserve">
+    <value>Applied: the keyboard was restarted with the new setting.</value>
+  </data>
+  <data name="AppleFnApplied" xml:space="preserve">
+    <value>Saved. Reconnect the keyboard from the tray menu (or restart Windows) to apply.</value>
+  </data>
+  <data name="TrayConnectTooltip" xml:space="preserve">
+    <value>Connect the device to this computer</value>
+  </data>
+  <data name="TraySettings" xml:space="preserve">
+    <value>Settings…</value>
+  </data>
+  <data name="TrayRestartAsAdmin" xml:space="preserve">
+    <value>Restart as administrator</value>
+  </data>
+  <data name="TrayOpenLog" xml:space="preserve">
+    <value>Open log</value>
+  </data>
+  <data name="TrayExit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="TrayTooltipBusy" xml:space="preserve">
+    <value>{0} — connecting…</value>
+  </data>
+  <data name="NotifyDone" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="NotifyFailed" xml:space="preserve">
+    <value>Could not connect</value>
+  </data>
+  <data name="NotifyError" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="NotifySaveFailed" xml:space="preserve">
+    <value>Could not save settings: {0}</value>
+  </data>
+  <data name="KindKeyboardMouse" xml:space="preserve">
+    <value>Keyboard + mouse</value>
+  </data>
+  <data name="KindKeyboard" xml:space="preserve">
+    <value>Keyboard</value>
+  </data>
+  <data name="KindMouse" xml:space="preserve">
+    <value>Mouse</value>
+  </data>
+  <data name="KindPeripheral" xml:space="preserve">
+    <value>Peripheral</value>
+  </data>
+  <data name="KindKeyboardBle" xml:space="preserve">
+    <value>Keyboard (BLE)</value>
+  </data>
+  <data name="KindBleDevice" xml:space="preserve">
+    <value>BLE device</value>
+  </data>
+  <data name="KindAudio" xml:space="preserve">
+    <value>Audio (speaker/headphones)</value>
+  </data>
+  <data name="KindComputer" xml:space="preserve">
+    <value>Computer</value>
+  </data>
+  <data name="KindPhone" xml:space="preserve">
+    <value>Phone</value>
+  </data>
+  <data name="KindImaging" xml:space="preserve">
+    <value>Printer/camera</value>
+  </data>
+  <data name="KindWearable" xml:space="preserve">
+    <value>Wearable</value>
+  </data>
+  <data name="KindHealth" xml:space="preserve">
+    <value>Health</value>
+  </data>
+  <data name="KindToy" xml:space="preserve">
+    <value>Toy</value>
+  </data>
+  <data name="KindAccessPoint" xml:space="preserve">
+    <value>Access point</value>
+  </data>
+  <data name="KindOther" xml:space="preserve">
+    <value>Other</value>
+  </data>
+  <data name="ResultNotFound" xml:space="preserve">
+    <value>“{0}” was not found among paired devices.</value>
+  </data>
+  <data name="ResultAccessDenied" xml:space="preserve">
+    <value>Windows did not allow reinstalling the device services without administrator rights. Choose “Restart as administrator” in the menu.</value>
+  </data>
+  <data name="ResultNoRadio" xml:space="preserve">
+    <value>Bluetooth adapter not found or turned off.</value>
+  </data>
+  <data name="ResultApiError" xml:space="preserve">
+    <value>Bluetooth API error: {0}.</value>
+  </data>
+  <data name="ResultBleAlreadyConnected" xml:space="preserve">
+    <value>“{0}” (BLE) is already connected. Windows does not support forcing a BLE reconnect.</value>
+  </data>
+  <data name="ResultConnected" xml:space="preserve">
+    <value>“{0}” is connected to this computer.</value>
+  </data>
+  <data name="ResultReconnected" xml:space="preserve">
+    <value>“{0}” has been reconnected.</value>
+  </data>
+  <data name="ResultNotConnected" xml:space="preserve">
+    <value>“{0}” did not respond. Make sure the device is turned on and nearby. Some devices accept incoming connections only on the active channel.</value>
+  </data>
+  <data name="SettingsTitle" xml:space="preserve">
+    <value>Bluetooth Switcher — settings</value>
+  </data>
+  <data name="SettingsHint" xml:space="preserve">
+    <value>Check the devices (keyboards, speakers, headphones…) to show in the tray menu. Clicking a menu item connects the device; if it is already connected, it is disconnected and connected again. The device must be paired with this computer beforehand.</value>
+  </data>
+  <data name="ColumnDevice" xml:space="preserve">
+    <value>Device</value>
+  </data>
+  <data name="ColumnAddress" xml:space="preserve">
+    <value>Address</value>
+  </data>
+  <data name="ColumnType" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="ColumnStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="SettingsRefresh" xml:space="preserve">
+    <value>Refresh list</value>
+  </data>
+  <data name="SettingsSearching" xml:space="preserve">
+    <value>Searching for paired devices…</value>
+  </data>
+  <data name="SettingsNoneFound" xml:space="preserve">
+    <value>No paired devices found. Pair a device in Windows Settings.</value>
+  </data>
+  <data name="SettingsFoundCount" xml:space="preserve">
+    <value>Devices found: {0}. Select a device to configure its services.</value>
+  </data>
+  <data name="SettingsError" xml:space="preserve">
+    <value>Error: {0}</value>
+  </data>
+  <data name="StatusConnected" xml:space="preserve">
+    <value>Connected</value>
+  </data>
+  <data name="StatusNotConnected" xml:space="preserve">
+    <value>Not connected</value>
+  </data>
+  <data name="StatusNotFound" xml:space="preserve">
+    <value>Not found</value>
+  </data>
+  <data name="ServicesGroup" xml:space="preserve">
+    <value>Services to reconnect</value>
+  </data>
+  <data name="ServicesGroupFor" xml:space="preserve">
+    <value>Services to reconnect: {0}</value>
+  </data>
+  <data name="ServicesGroupBle" xml:space="preserve">
+    <value>Services to reconnect: {0} — not applicable to BLE</value>
+  </data>
+  <data name="ServicesGroupLoading" xml:space="preserve">
+    <value>Services to reconnect: {0} — loading…</value>
+  </data>
+  <data name="ServicesGroupNotFound" xml:space="preserve">
+    <value>Services to reconnect: {0} — device not found</value>
+  </data>
+  <data name="ServicesAuto" xml:space="preserve">
+    <value>Automatic (keyboard/mouse — HID, speaker/headphones — Hands-Free)</value>
+  </data>
+  <data name="ServicesNote" xml:space="preserve">
+    <value>Each service takes about 3 s to reconnect. To restore a speaker’s microphone, Hands-Free is usually enough.</value>
+  </data>
+  <data name="ServiceVendor" xml:space="preserve">
+    <value>{0} (vendor-specific)</value>
+  </data>
+  <data name="ServiceHintHid" xml:space="preserve">
+    <value>keyboard/mouse</value>
+  </data>
+  <data name="ServiceHintAudio" xml:space="preserve">
+    <value>audio</value>
+  </data>
+  <data name="ServiceHintMicrophone" xml:space="preserve">
+    <value>microphone</value>
+  </data>
+  <data name="ServiceHintControls" xml:space="preserve">
+    <value>controls</value>
+  </data>
+  <data name="SettingsTimeout" xml:space="preserve">
+    <value>Connection timeout, s:</value>
+  </data>
+  <data name="SettingsNotifications" xml:space="preserve">
+    <value>Show notifications on successful connection</value>
+  </data>
+  <data name="SettingsAutoStart" xml:space="preserve">
+    <value>Start with Windows</value>
+  </data>
+  <data name="SettingsLanguage" xml:space="preserve">
+    <value>Language:</value>
+  </data>
+  <data name="SettingsLanguageSystem" xml:space="preserve">
+    <value>System default</value>
+  </data>
+  <data name="SettingsSave" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="SettingsCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="SettingsAutoStartFailed" xml:space="preserve">
+    <value>Could not change autostart: {0}</value>
+  </data>
+</root>

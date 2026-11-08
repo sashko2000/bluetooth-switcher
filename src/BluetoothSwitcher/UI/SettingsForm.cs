@@ -1,5 +1,7 @@
 using BluetoothSwitcher.Bluetooth;
 using BluetoothSwitcher.Infrastructure;
+using BluetoothSwitcher.Keyboard;
+using BluetoothSwitcher.Localization;
 
 namespace BluetoothSwitcher.UI;
 
@@ -12,8 +14,10 @@ internal sealed class SettingsForm : Form
     private readonly Button _ok;
     private readonly Button _cancel;
     private readonly NumericUpDown _timeout;
+    private readonly NumericUpDown _lowBattery;
     private readonly CheckBox _notifications;
     private readonly CheckBox _autoStart;
+    private readonly ComboBox _language;
     private readonly Label _status;
 
     private readonly GroupBox _servicesGroup;
@@ -21,32 +25,37 @@ internal sealed class SettingsForm : Form
     private readonly CheckedListBox _services;
     private readonly Label _servicesNote;
 
+    private readonly Label _appleInfo;
+    private readonly Label _appleStatus;
+    private readonly Button _appleInstall;
+    private readonly ComboBox _appleFnMode;
+    private readonly GroupBox _appleGroup;
+    private bool _updatingAppleFn;
+
     private bool _loaded;
     private bool _updatingServices;
     private ListViewItem? _servicesItem;
     private int _servicesVersion;
 
-    /// <summary>Новые настройки, если пользователь нажал «Сохранить»; иначе null.</summary>
+    /// <summary>New settings if the user clicked "Save"; otherwise null.</summary>
     public AppSettings? Result { get; private set; }
 
     public SettingsForm(AppSettings settings)
     {
         _settings = settings;
 
-        Text = "Bluetooth Switcher — настройки";
+        Text = Strings.SettingsTitle;
         StartPosition = FormStartPosition.CenterScreen;
         AutoScaleMode = AutoScaleMode.Dpi;
         Font = SystemFonts.MessageBoxFont ?? Font;
-        MinimumSize = new Size(640, 600);
-        Size = new Size(800, 680);
+        MinimumSize = new Size(640, 800);
+        Size = new Size(800, 880);
         ShowInTaskbar = true;
         Icon = TrayIconFactory.Create();
 
         var hint = new Label
         {
-            Text = "Отметьте устройства (клавиатуры, колонки, наушники…), которые нужно показывать в меню трея. " +
-                   "Клик по пункту подключает устройство, а если оно уже подключено — отключает и подключает заново. " +
-                   "Устройство должно быть заранее сопряжено с этим компьютером.",
+            Text = Strings.SettingsHint,
             AutoSize = true,
             Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top,
             Padding = new Padding(0, 0, 0, 6),
@@ -62,13 +71,13 @@ internal sealed class SettingsForm : Form
             HideSelection = false,
             MultiSelect = false,
         };
-        _list.Columns.Add("Устройство", 220);
-        _list.Columns.Add("Адрес", 130);
-        _list.Columns.Add("Тип", 200);
-        _list.Columns.Add("Состояние", 120);
+        _list.Columns.Add(Strings.ColumnDevice, 220);
+        _list.Columns.Add(Strings.ColumnAddress, 130);
+        _list.Columns.Add(Strings.ColumnType, 200);
+        _list.Columns.Add(Strings.ColumnStatus, 120);
         _list.SelectedIndexChanged += async (_, _) => await ShowServicesForSelectionAsync();
 
-        _refresh = new Button { Text = "Обновить список", AutoSize = true };
+        _refresh = new Button { Text = Strings.SettingsRefresh, AutoSize = true };
         _refresh.Click += async (_, _) => await LoadDevicesAsync();
 
         _status = new Label { AutoSize = true, Anchor = AnchorStyles.Left, ForeColor = SystemColors.GrayText };
@@ -77,10 +86,10 @@ internal sealed class SettingsForm : Form
         listButtons.Controls.Add(_refresh);
         listButtons.Controls.Add(_status);
 
-        // --- Сервисы для переподключения выбранного устройства ---
+        // --- Services to reconnect for the selected device ---
         _autoServices = new CheckBox
         {
-            Text = "Автоматически (клавиатура/мышь — HID, колонка/наушники — Hands-Free)",
+            Text = Strings.ServicesAuto,
             AutoSize = true,
             Dock = DockStyle.Top,
         };
@@ -92,12 +101,12 @@ internal sealed class SettingsForm : Form
             CheckOnClick = true,
             IntegralHeight = false,
         };
-        // ItemCheck приходит до изменения состояния — фиксируем изменения после него.
+        // ItemCheck fires before the state changes, so apply the edit afterwards.
         _services.ItemCheck += (_, _) => BeginInvoke(OnServicesEdited);
 
         _servicesNote = new Label
         {
-            Text = "Каждый сервис переподключается ≈ 3 с. Чтобы вернуть микрофон колонки, обычно достаточно Hands-Free.",
+            Text = Strings.ServicesNote,
             AutoSize = true,
             Dock = DockStyle.Bottom,
             ForeColor = SystemColors.GrayText,
@@ -106,7 +115,7 @@ internal sealed class SettingsForm : Form
 
         _servicesGroup = new GroupBox
         {
-            Text = "Сервисы для переподключения",
+            Text = Strings.ServicesGroup,
             Dock = DockStyle.Fill,
             Height = 170,
             Padding = new Padding(8),
@@ -116,7 +125,7 @@ internal sealed class SettingsForm : Form
         _servicesGroup.Controls.Add(_servicesNote);
         _servicesGroup.Controls.Add(_autoServices);
 
-        // --- Общие параметры ---
+        // --- General options ---
         _timeout = new NumericUpDown
         {
             Minimum = 5,
@@ -124,26 +133,50 @@ internal sealed class SettingsForm : Form
             Value = Math.Clamp(settings.ConnectTimeoutSeconds, 5, 120),
             Width = 70,
         };
-        _notifications = new CheckBox { Text = "Показывать уведомления об успешном подключении", AutoSize = true, Checked = settings.ShowNotifications };
-        _autoStart = new CheckBox { Text = "Запускать вместе с Windows", AutoSize = true, Checked = AutoStart.IsEnabled };
+        _lowBattery = new NumericUpDown
+        {
+            Minimum = 0,
+            Maximum = 50,
+            Value = Math.Clamp(settings.LowBatteryThreshold, 0, 50),
+            Width = 70,
+        };
+        _notifications = new CheckBox { Text = Strings.SettingsNotifications, AutoSize = true, Checked = settings.ShowNotifications };
+        _autoStart = new CheckBox { Text = Strings.SettingsAutoStart, AutoSize = true, Checked = AutoStart.IsEnabled };
 
         var options = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, Padding = new Padding(0, 8, 0, 0) };
         options.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         options.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        options.Controls.Add(new Label { Text = "Таймаут подключения, сек:", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
-        options.Controls.Add(_timeout, 1, 0);
-        options.Controls.Add(_notifications, 0, 1);
+        _language = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180 };
+        _language.Items.Add(new LanguageItem("", Strings.SettingsLanguageSystem));
+        foreach (var (code, nativeName) in AppLanguage.Supported)
+        {
+            _language.Items.Add(new LanguageItem(code, nativeName));
+        }
+        _language.SelectedItem = _language.Items.Cast<LanguageItem>()
+            .FirstOrDefault(l => string.Equals(l.Code, settings.Language, StringComparison.OrdinalIgnoreCase))
+            ?? _language.Items[0];
+
+        options.Controls.Add(new Label { Text = Strings.SettingsLanguage, AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
+        options.Controls.Add(_language, 1, 0);
+        options.Controls.Add(new Label { Text = Strings.SettingsTimeout, AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
+        options.Controls.Add(_timeout, 1, 1);
+        options.Controls.Add(new Label { Text = Strings.SettingsLowBattery, AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
+        options.Controls.Add(_lowBattery, 1, 2);
+        options.Controls.Add(_notifications, 0, 3);
         options.SetColumnSpan(_notifications, 2);
-        options.Controls.Add(_autoStart, 0, 2);
+        options.Controls.Add(_autoStart, 0, 4);
         options.SetColumnSpan(_autoStart, 2);
 
-        _ok = new Button { Text = "Сохранить", AutoSize = true, DialogResult = DialogResult.OK };
+        // The form is shown modelessly (Show, not ShowDialog), so a button's DialogResult does not close it:
+        // both buttons close the form explicitly.
+        _ok = new Button { Text = Strings.SettingsSave, AutoSize = true };
         _ok.Click += (_, _) => Save();
-        _cancel = new Button { Text = "Отмена", AutoSize = true, DialogResult = DialogResult.Cancel };
+        _cancel = new Button { Text = Strings.SettingsCancel, AutoSize = true };
+        _cancel.Click += (_, _) => Close();
         AcceptButton = _ok;
         CancelButton = _cancel;
 
-        // Кнопки диалога — отдельной панелью, прижатой к низу окна: они видны при любом размере.
+        // Dialog buttons live in a separate panel docked to the bottom, so they stay visible at any size.
         var dialogButtons = new FlowLayoutPanel
         {
             Dock = DockStyle.Bottom,
@@ -156,31 +189,66 @@ internal sealed class SettingsForm : Form
         dialogButtons.Controls.Add(_cancel);
         dialogButtons.Controls.Add(_ok);
 
+        // --- Apple Magic Keyboard driver (Boot Camp) ---
+        _appleInfo = new Label { Text = Strings.AppleDriverInfo, AutoSize = true, Margin = new Padding(3, 3, 3, 6) };
+        _appleInstall = new Button { AutoSize = true };
+        _appleInstall.Click += async (_, _) => await InstallAppleDriverAsync();
+        _appleStatus = new Label { AutoSize = true, Anchor = AnchorStyles.Left, ForeColor = SystemColors.GrayText };
+        _appleFnMode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 260 };
+        _appleFnMode.Items.Add(Strings.AppleFnStandard);
+        _appleFnMode.Items.Add(Strings.AppleFnMedia);
+        _appleFnMode.SelectionChangeCommitted += async (_, _) => await ApplyAppleFnModeAsync();
+
+        var appleLayout = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2 };
+        appleLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        appleLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        appleLayout.Controls.Add(_appleInfo, 0, 0);
+        appleLayout.SetColumnSpan(_appleInfo, 2);
+        appleLayout.Controls.Add(_appleInstall, 0, 1);
+        appleLayout.Controls.Add(_appleStatus, 1, 1);
+        appleLayout.Controls.Add(new Label { Text = Strings.AppleFnLabel, AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
+        appleLayout.Controls.Add(_appleFnMode, 1, 2);
+
+        _appleGroup = new GroupBox
+        {
+            Text = Strings.AppleGroup,
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Padding = new Padding(8),
+        };
+        _appleGroup.Controls.Add(appleLayout);
+        RefreshAppleDriverState();
+
         var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(12, 12, 12, 0) };
-        // Колонка строго по ширине окна, иначе длинный текст растягивает разметку за край.
+        // The column is pinned to the window width, otherwise long text stretches the layout past the edge.
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 170));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.Controls.Add(hint, 0, 0);
         root.Controls.Add(_list, 0, 1);
         root.Controls.Add(listButtons, 0, 2);
         root.Controls.Add(_servicesGroup, 0, 3);
-        root.Controls.Add(options, 0, 4);
+        root.Controls.Add(_appleGroup, 0, 4);
+        root.Controls.Add(options, 0, 5);
 
-        // Перенос длинных подписей по ширине окна.
+        // Wrap long labels to the window width.
         void Wrap()
         {
             int width = Math.Max(100, root.ClientSize.Width - root.Padding.Horizontal - hint.Margin.Horizontal);
             hint.MaximumSize = new Size(width, 0);
             _servicesNote.MaximumSize = new Size(Math.Max(100, width - 20), 0);
+            _appleInfo.MaximumSize = new Size(Math.Max(100, width - 20), 0);
+            _appleStatus.MaximumSize = new Size(Math.Max(100, width - 260), 0);
         }
         root.SizeChanged += (_, _) => Wrap();
 
         Controls.Add(root);
-        Controls.Add(dialogButtons); // добавляется после root, чтобы Dock.Bottom обрабатывался первым
+        Controls.Add(dialogButtons); // added after root so that Dock.Bottom is laid out first
         Wrap();
     }
 
@@ -192,7 +260,7 @@ internal sealed class SettingsForm : Form
 
     private async Task LoadDevicesAsync()
     {
-        // Сохраняем отметки и настройки пользователя между обновлениями списка.
+        // Keep the user's checks and settings across list refreshes.
         var checkedKeys = _loaded
             ? _list.Items.Cast<ListViewItem>().Where(i => i.Checked).Select(i => ((SavedDevice)i.Tag!).Key).ToHashSet()
             : _settings.Devices.Select(d => d.Key).ToHashSet();
@@ -201,7 +269,7 @@ internal sealed class SettingsForm : Form
             : _settings.Devices).ToDictionary(d => d.Key);
 
         _refresh.Enabled = false;
-        _status.Text = "Поиск сопряжённых устройств…";
+        _status.Text = Strings.SettingsSearching;
         try
         {
             var paired = await BluetoothManager.GetPairedDevicesAsync();
@@ -223,7 +291,7 @@ internal sealed class SettingsForm : Form
                 };
                 item.SubItems.Add(BluetoothAddress.Format(device.Address));
                 item.SubItems.Add(device.Kind + (device.IsLowEnergy ? "" : " (Classic)"));
-                item.SubItems.Add(device.IsConnected ? "Подключено" : "Не подключено");
+                item.SubItems.Add(device.IsConnected ? Strings.StatusConnected : Strings.StatusNotConnected);
                 if (device.IsKeyboard)
                 {
                     item.Font = new Font(_list.Font, FontStyle.Bold);
@@ -232,24 +300,25 @@ internal sealed class SettingsForm : Form
                 _list.Items.Add(item);
             }
 
-            // Ранее выбранные устройства, которых сейчас нет среди сопряжённых.
+            // Previously selected devices that are no longer paired.
             var pairedKeys = paired.Select(p => p.Key).ToHashSet();
             foreach (var saved in knownSaved.Values.Where(s => !pairedKeys.Contains(s.Key) && checkedKeys.Contains(s.Key)))
             {
                 var item = new ListViewItem(saved.DisplayName) { Tag = saved, Checked = true, ForeColor = SystemColors.GrayText };
                 item.SubItems.Add(BluetoothAddress.Format(saved.Address));
                 item.SubItems.Add(saved.IsLowEnergy ? "BLE" : "Classic");
-                item.SubItems.Add("Не найдено");
+                item.SubItems.Add(Strings.StatusNotFound);
                 _list.Items.Add(item);
             }
 
             _list.EndUpdate();
             _loaded = true;
+            _appleGroup.Visible = AppleKeyboardDriver.IsInstalled || AppleKeyboardDriver.IsSupportedKeyboardPresent();
             _status.Text = paired.Count == 0
-                ? "Сопряжённых устройств не найдено. Выполните сопряжение в параметрах Windows."
-                : $"Найдено устройств: {paired.Count}. Выделите устройство, чтобы настроить сервисы.";
+                ? Strings.SettingsNoneFound
+                : Strings.SettingsFoundCount(paired.Count);
 
-            // Сразу выделяем первое отмеченное устройство, чтобы показать его сервисы.
+            // Select the first checked device right away to show its services.
             var first = _list.Items.Cast<ListViewItem>().FirstOrDefault(i => i.Checked) ?? (_list.Items.Count > 0 ? _list.Items[0] : null);
             if (first is not null)
             {
@@ -262,8 +331,8 @@ internal sealed class SettingsForm : Form
         }
         catch (Exception ex)
         {
-            Log.Error("Ошибка получения списка устройств", ex);
-            _status.Text = "Ошибка: " + ex.Message;
+            Log.Error("Failed to list devices", ex);
+            _status.Text = Strings.SettingsError(ex.Message);
         }
         finally
         {
@@ -271,10 +340,28 @@ internal sealed class SettingsForm : Form
         }
     }
 
+    private sealed record LanguageItem(string Code, string Name)
+    {
+        public override string ToString() => Name;
+    }
+
     private sealed record ServiceItem(Guid Id)
     {
-        public override string ToString() =>
-            NativeBluetooth.IsKnown(Id) ? NativeBluetooth.Describe(Id) : $"{Id} (служебный)";
+        public override string ToString()
+        {
+            if (!NativeBluetooth.IsKnown(Id))
+            {
+                return Strings.ServiceVendor(Id);
+            }
+
+            string name = NativeBluetooth.Describe(Id);
+            string? hint = Id == NativeBluetooth.HidServiceClass ? Strings.ServiceHintHid
+                : Id == NativeBluetooth.A2dpSinkServiceClass ? Strings.ServiceHintAudio
+                : Id == NativeBluetooth.HandsFreeServiceClass || Id == NativeBluetooth.HeadsetServiceClass ? Strings.ServiceHintMicrophone
+                : Id == NativeBluetooth.AvrcpServiceClass ? Strings.ServiceHintControls
+                : null;
+            return hint is null ? name : $"{name} ({hint})";
+        }
     }
 
     private async Task ShowServicesForSelectionAsync()
@@ -282,10 +369,10 @@ internal sealed class SettingsForm : Form
         var item = _list.SelectedItems.Count > 0 ? _list.SelectedItems[0] : null;
         if (item is null)
         {
-            // Снятие выделения (например, при переходе к другой строке) — оставляем текущую панель.
+            // Selection cleared (e.g. while moving to another row): keep the current panel.
             if (_list.Items.Count == 0)
             {
-                ResetServicesPanel("Сервисы для переподключения", enabled: false);
+                ResetServicesPanel(Strings.ServicesGroup, enabled: false);
             }
 
             return;
@@ -297,11 +384,11 @@ internal sealed class SettingsForm : Form
 
         if (saved.IsLowEnergy)
         {
-            ResetServicesPanel($"Сервисы для переподключения: {saved.DisplayName} — не применяется для BLE", enabled: false);
+            ResetServicesPanel(Strings.ServicesGroupBle(saved.DisplayName), enabled: false);
             return;
         }
 
-        ResetServicesPanel($"Сервисы для переподключения: {saved.DisplayName} — загрузка…", enabled: false);
+        ResetServicesPanel(Strings.ServicesGroupLoading(saved.DisplayName), enabled: false);
 
         Guid[]? installed;
         try
@@ -310,22 +397,22 @@ internal sealed class SettingsForm : Form
         }
         catch (Exception ex)
         {
-            Log.Error("Ошибка получения списка сервисов", ex);
+            Log.Error("Failed to list services", ex);
             installed = null;
         }
 
         if (version != _servicesVersion)
         {
-            return; // пользователь уже выделил другое устройство
+            return; // the user has already selected another device
         }
 
         if (installed is null)
         {
-            ResetServicesPanel($"Сервисы для переподключения: {saved.DisplayName} — устройство не найдено", enabled: false);
+            ResetServicesPanel(Strings.ServicesGroupNotFound(saved.DisplayName), enabled: false);
             return;
         }
 
-        // Сохранённый вручную сервис мог остаться выключенным (например, после сбоя) — показываем и его.
+        // A manually saved service may have been left disabled (e.g. after a failure), so show it too.
         var all = installed.Concat(saved.Services ?? []).Distinct()
             .OrderByDescending(NativeBluetooth.IsKnown)
             .ToList();
@@ -335,7 +422,7 @@ internal sealed class SettingsForm : Form
         _updatingServices = true;
         try
         {
-            _servicesGroup.Text = $"Сервисы для переподключения: {saved.DisplayName}";
+            _servicesGroup.Text = Strings.ServicesGroupFor(saved.DisplayName);
             _services.Items.Clear();
             foreach (var id in all)
             {
@@ -381,7 +468,7 @@ internal sealed class SettingsForm : Form
 
         if (_autoServices.Checked)
         {
-            // Показываем, что будет выбрано автоматически.
+            // Show what will be selected automatically.
             _updatingServices = true;
             try
             {
@@ -404,8 +491,102 @@ internal sealed class SettingsForm : Form
         {
             _services.Enabled = true;
             var selected = _services.CheckedItems.Cast<ServiceItem>().Select(s => s.Id).ToList();
-            // Пустой выбор равнозначен «автоматически», иначе переподключать было бы нечего.
+            // An empty selection means "automatic", otherwise there would be nothing to reconnect.
             _servicesItem.Tag = saved with { Services = selected.Count > 0 ? selected : null };
+        }
+    }
+
+    private void RefreshAppleDriverState(string? status = null)
+    {
+        bool installed = AppleKeyboardDriver.IsInstalled;
+        // Only relevant with an Apple keyboard the driver supports (or when the driver is already installed).
+        _appleGroup.Visible = installed || AppleKeyboardDriver.IsSupportedKeyboardPresent();
+        _appleInstall.Text = installed ? Strings.AppleDriverReinstall : Strings.AppleDriverInstall;
+        _appleStatus.Text = status ?? (installed ? Strings.AppleDriverInstalled : Strings.AppleDriverNotInstalled);
+
+        _updatingAppleFn = true;
+        try
+        {
+            _appleFnMode.Enabled = installed;
+            _appleFnMode.SelectedIndex = AppleKeyboardDriver.MediaKeysByDefault == true ? 1 : 0;
+        }
+        finally
+        {
+            _updatingAppleFn = false;
+        }
+    }
+
+    private async Task InstallAppleDriverAsync()
+    {
+        _appleInstall.Enabled = false;
+        _appleFnMode.Enabled = false;
+        var progress = new Progress<AppleKeyboardDriver.InstallStage>(stage => _appleStatus.Text = stage switch
+        {
+            AppleKeyboardDriver.InstallStage.Downloading => Strings.AppleDriverDownloading,
+            AppleKeyboardDriver.InstallStage.Extracting => Strings.AppleDriverExtracting,
+            _ => Strings.AppleDriverInstalling,
+        });
+
+        string status;
+        try
+        {
+            var result = await AppleKeyboardDriver.InstallAsync(progress);
+            status = result switch
+            {
+                AppleKeyboardDriver.InstallResult.InstalledRebootRequired => Strings.AppleDriverInstallReboot,
+                AppleKeyboardDriver.InstallResult.AlreadyUpToDate => Strings.AppleDriverUpToDate,
+                AppleKeyboardDriver.InstallResult.AddedNoDevice => Strings.AppleDriverInstallNoDevice,
+                _ => Strings.AppleDriverInstallDone,
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            status = Strings.AppleDriverCancelled;
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Apple keyboard driver installation failed", ex);
+            status = Strings.AppleDriverFailed(ex.Message);
+        }
+
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        _appleInstall.Enabled = true;
+        RefreshAppleDriverState(status);
+    }
+
+    private async Task ApplyAppleFnModeAsync()
+    {
+        if (_updatingAppleFn)
+        {
+            return;
+        }
+
+        bool media = _appleFnMode.SelectedIndex == 1;
+        _appleFnMode.Enabled = false;
+        string status;
+        try
+        {
+            bool restarted = await AppleKeyboardDriver.SetMediaKeysByDefaultAsync(media);
+            Log.Info($"Apple keyboard: media keys by default = {media}, keyboard restarted = {restarted}");
+            status = restarted ? Strings.AppleFnAppliedNow : Strings.AppleFnApplied;
+        }
+        catch (OperationCanceledException)
+        {
+            status = Strings.AppleDriverCancelled;
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to change the Apple keyboard Fn mode", ex);
+            status = Strings.AppleDriverFailed(ex.Message);
+        }
+
+        if (!IsDisposed)
+        {
+            RefreshAppleDriverState(status);
         }
     }
 
@@ -420,6 +601,8 @@ internal sealed class SettingsForm : Form
             Devices = devices,
             ConnectTimeoutSeconds = (int)_timeout.Value,
             ShowNotifications = _notifications.Checked,
+            LowBatteryThreshold = (int)_lowBattery.Value,
+            Language = (_language.SelectedItem as LanguageItem)?.Code ?? "",
         };
 
         try
@@ -431,8 +614,8 @@ internal sealed class SettingsForm : Form
         }
         catch (Exception ex)
         {
-            Log.Error("Не удалось изменить автозапуск", ex);
-            MessageBox.Show(this, "Не удалось изменить автозапуск: " + ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            Log.Error("Failed to change autostart", ex);
+            MessageBox.Show(this, Strings.SettingsAutoStartFailed(ex.Message), Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         Close();

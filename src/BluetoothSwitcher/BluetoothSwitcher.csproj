@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <!-- Версия Windows SDK нужна для доступа к WinRT API Windows.Devices.Bluetooth -->
+    <!-- The Windows SDK version is required for the Windows.Devices.Bluetooth WinRT APIs -->
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <UseWindowsForms>true</UseWindowsForms>
@@ -14,11 +14,19 @@
     <AssemblyName>BluetoothSwitcher</AssemblyName>
     <Product>Bluetooth Switcher</Product>
     <Version>1.0.0</Version>
+    <NeutralLanguage>en</NeutralLanguage>
+    <!-- Ship only the translated UI languages (skips framework satellite assemblies for other cultures). -->
+    <SatelliteResourceLanguages>en;ru;uk</SatelliteResourceLanguages>
 
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationVisualStyles>true</ApplicationVisualStyles>
     <ApplicationUseCompatibleTextRendering>false</ApplicationUseCompatibleTextRendering>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- RAR extraction for Apple's Boot Camp update package (the keyboard driver is downloaded on demand). -->
+    <PackageReference Include="SharpCompress" Version="0.38.0" />
+  </ItemGroup>
 
 </Project>

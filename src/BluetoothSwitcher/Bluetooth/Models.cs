@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace BluetoothSwitcher.Bluetooth;
 
-/// <summary>Устройство, выбранное пользователем в настройках.</summary>
+/// <summary>A device selected by the user in settings.</summary>
 public sealed record SavedDevice
 {
     public ulong Address { get; init; }
@@ -10,8 +10,8 @@ public sealed record SavedDevice
     public bool IsLowEnergy { get; init; }
 
     /// <summary>
-    /// Сервисы, которые переустанавливаются при переподключении (только Classic).
-    /// null — автоматический выбор (HID для клавиатуры, Hands-Free/Headset для аудио).
+    /// Services reinstalled on reconnect (Classic only).
+    /// null means automatic selection (HID for keyboards, Hands-Free/Headset for audio).
     /// </summary>
     public List<Guid>? Services { get; init; }
 
@@ -25,7 +25,7 @@ public sealed record SavedDevice
         $"{(isLowEnergy ? "LE" : "BR")}:{address:X12}";
 }
 
-/// <summary>Сопряжённое с этим компьютером устройство.</summary>
+/// <summary>A device paired with this computer.</summary>
 public sealed record PairedDeviceInfo(
     ulong Address,
     string Name,

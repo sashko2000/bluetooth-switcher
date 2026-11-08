@@ -4,10 +4,10 @@ using BluetoothSwitcher.Infrastructure;
 namespace BluetoothSwitcher.Bluetooth;
 
 /// <summary>
-/// Win32 Bluetooth API (bthprops.cpl). Используется для «жёсткого» переподключения
-/// классического (BR/EDR) устройства: его сервисы (HID, A2DP, Hands-Free, AVRCP…) отключаются
-/// и снова включаются. Это то же самое, что «Отключить → Подключить» в параметрах Windows:
-/// драйверы профилей переустанавливаются, и стек сам инициирует подключение.
+/// Win32 Bluetooth API (bthprops.cpl). Used for a "hard" reconnect of a Classic (BR/EDR) device:
+/// its services (HID, A2DP, Hands-Free, AVRCP…) are disabled and enabled again. This is the same as
+/// "Disconnect → Connect" in Windows Settings: profile drivers are reinstalled and the stack
+/// initiates the connection by itself.
 /// </summary>
 internal static class NativeBluetooth
 {
@@ -24,17 +24,20 @@ internal static class NativeBluetooth
     public static readonly Guid HidServiceClass = new("00001124-0000-1000-8000-00805F9B34FB");
     public static readonly Guid HandsFreeServiceClass = new("0000111E-0000-1000-8000-00805F9B34FB");
     public static readonly Guid HeadsetServiceClass = new("00001108-0000-1000-8000-00805F9B34FB");
+    public static readonly Guid A2dpSinkServiceClass = new("0000110B-0000-1000-8000-00805F9B34FB");
+    public static readonly Guid AvrcpServiceClass = new("0000110E-0000-1000-8000-00805F9B34FB");
 
+    /// <summary>Standard profile names (protocol names, not localized).</summary>
     private static readonly Dictionary<Guid, string> KnownServices = new()
     {
-        [HidServiceClass] = "HID (клавиатура/мышь)",
-        [new Guid("0000110B-0000-1000-8000-00805F9B34FB")] = "A2DP Sink (звук)",
+        [HidServiceClass] = "HID",
+        [A2dpSinkServiceClass] = "A2DP Sink",
         [new Guid("0000110A-0000-1000-8000-00805F9B34FB")] = "A2DP Source",
-        [HandsFreeServiceClass] = "Hands-Free (микрофон)",
+        [HandsFreeServiceClass] = "Hands-Free",
         [new Guid("0000111F-0000-1000-8000-00805F9B34FB")] = "Hands-Free AG",
-        [HeadsetServiceClass] = "Headset (микрофон)",
+        [HeadsetServiceClass] = "Headset",
         [new Guid("00001112-0000-1000-8000-00805F9B34FB")] = "Headset AG",
-        [new Guid("0000110E-0000-1000-8000-00805F9B34FB")] = "AVRCP (управление)",
+        [AvrcpServiceClass] = "AVRCP",
         [new Guid("0000110C-0000-1000-8000-00805F9B34FB")] = "AVRCP Target",
         [new Guid("00001101-0000-1000-8000-00805F9B34FB")] = "Serial Port",
     };
@@ -45,9 +48,9 @@ internal static class NativeBluetooth
         KnownServices.TryGetValue(service, out var name) ? name : service.ToString();
 
     /// <summary>
-    /// Сервисы, которые переподключаются в режиме «Автоматически».
-    /// Каждый вызов BluetoothSetServiceState занимает около 3 секунд, поэтому трогаем минимум:
-    /// клавиатура/мышь — только HID, колонка/гарнитура — только Hands-Free/Headset (микрофон).
+    /// Services reconnected in "Automatic" mode.
+    /// Each BluetoothSetServiceState call takes about 3 seconds, so touch as few as possible:
+    /// keyboard/mouse — HID only, speaker/headset — Hands-Free/Headset only (microphone).
     /// </summary>
     public static Guid[] DefaultServices(IReadOnlyCollection<Guid> installed)
     {
@@ -72,8 +75,8 @@ internal static class NativeBluetooth
     }
 
     /// <summary>
-    /// Полный набор для подключения устройства, которое сейчас не подключено к этому компьютеру
-    /// (например, занято другим): все стандартные профили, без служебных сервисов производителя.
+    /// Full set used to connect a device that is not currently connected to this computer
+    /// (e.g. it is in use by another one): all standard profiles, without vendor-specific services.
     /// </summary>
     public static Guid[] FullServices(IReadOnlyCollection<Guid> installed)
     {
@@ -86,7 +89,7 @@ internal static class NativeBluetooth
         return installed.Count > 0 ? installed.ToArray() : [HidServiceClass];
     }
 
-    /// <summary>Установленные (включённые) сервисы устройства или null, если устройство не найдено.</summary>
+    /// <summary>Installed (enabled) services of the device, or null if the device was not found.</summary>
     public static Guid[]? TryGetInstalledServices(ulong address)
     {
         var radio = OpenFirstRadio();
@@ -107,19 +110,19 @@ internal static class NativeBluetooth
     }
 
     /// <summary>
-    /// Отключает и снова включает сервисы устройства. Возвращает код ошибки Win32.
+    /// Disables and re-enables the device's services. Returns a Win32 error code.
     /// </summary>
-    /// <param name="services">Выбранные пользователем сервисы; null — автоматический выбор (<see cref="DefaultServices"/>).</param>
+    /// <param name="services">Services selected by the user; null means automatic selection (<see cref="DefaultServices"/>).</param>
     /// <param name="full">
-    /// true — устройство не подключено к этому ПК: переустанавливаются все стандартные профили
-    /// (<see cref="FullServices"/>) плюс выбранные пользователем.
+    /// true when the device is not connected to this PC: all standard profiles
+    /// (<see cref="FullServices"/>) plus the user-selected ones are reinstalled.
     /// </param>
     public static int ReinstallServices(ulong address, TimeSpan pause, IReadOnlyCollection<Guid>? services, bool full)
     {
         var radio = OpenFirstRadio();
         if (radio == IntPtr.Zero)
         {
-            Log.Error("Bluetooth-адаптер не найден");
+            Log.Error("Bluetooth adapter not found");
             return ErrorNoRadio;
         }
 
@@ -138,8 +141,8 @@ internal static class NativeBluetooth
                 ? FullServices(installed).Union(services ?? []).ToArray()
                 : services is { Count: > 0 } ? services.ToArray() : DefaultServices(installed);
 
-            Log.Info($"Установлены: [{string.Join(", ", installed.Select(Describe))}]");
-            Log.Info($"Переустановка [{string.Join(", ", targets.Select(Describe))}] для «{info.szName}» ({BluetoothAddress.Format(address)})");
+            Log.Info($"Installed: [{string.Join(", ", installed.Select(Describe))}]");
+            Log.Info($"Reinstalling [{string.Join(", ", targets.Select(Describe))}] for '{info.szName}' ({BluetoothAddress.Format(address)})");
 
             foreach (var service in targets)
             {

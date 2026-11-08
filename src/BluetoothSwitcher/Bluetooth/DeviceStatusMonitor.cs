@@ -5,8 +5,8 @@ using Windows.Foundation;
 namespace BluetoothSwitcher.Bluetooth;
 
 /// <summary>
-/// Следит за состоянием подключения выбранных устройств.
-/// Событие <see cref="StatusChanged"/> приходит из произвольного потока.
+/// Tracks the connection state of the selected devices.
+/// The <see cref="StatusChanged"/> event is raised on an arbitrary thread.
 /// </summary>
 public sealed class DeviceStatusMonitor : IDisposable
 {
@@ -38,7 +38,7 @@ public sealed class DeviceStatusMonitor : IDisposable
                 }
                 catch (Exception ex)
                 {
-                    Log.Error($"Не удалось начать отслеживание «{saved.DisplayName}»", ex);
+                    Log.Error($"Failed to start watching '{saved.DisplayName}'", ex);
                 }
             }
         }
@@ -50,7 +50,7 @@ public sealed class DeviceStatusMonitor : IDisposable
         StatusChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>true/false — подключено/нет; null — состояние неизвестно (устройство не найдено).</summary>
+    /// <summary>true/false: connected or not; null: state unknown (device not found).</summary>
     public bool? IsConnected(SavedDevice device)
     {
         lock (_sync)

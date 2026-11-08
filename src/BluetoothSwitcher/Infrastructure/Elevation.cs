@@ -16,8 +16,8 @@ internal static class Elevation
     }
 
     /// <summary>
-    /// Запускает новый экземпляр приложения с повышенными правами.
-    /// Возвращает false, если пользователь отменил запрос UAC.
+    /// Starts a new elevated instance of the application.
+    /// Returns false if the user cancelled the UAC prompt.
     /// </summary>
     public static bool TryRestartElevated()
     {

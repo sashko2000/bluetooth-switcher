@@ -20,15 +20,15 @@ internal static class Program
             mutex = new Mutex(initiallyOwned: true, MutexName, out ownsMutex);
             if (!ownsMutex && isRestart)
             {
-                // Предыдущий экземпляр (например, при перезапуске от имени администратора)
-                // ещё завершается — даём ему время.
+                // The previous instance (e.g. when restarting as administrator)
+                // is still shutting down, so give it some time.
                 try { ownsMutex = mutex.WaitOne(TimeSpan.FromSeconds(10)); }
                 catch (AbandonedMutexException) { ownsMutex = true; }
             }
         }
         catch (UnauthorizedAccessException)
         {
-            // Мьютекс создан процессом с повышенными правами — значит, приложение уже запущено.
+            // The mutex was created by an elevated process, so the app is already running.
             ownsMutex = false;
         }
 
@@ -45,7 +45,7 @@ internal static class Program
         try
         {
             ApplicationConfiguration.Initialize();
-            Log.Info($"Запуск. Права администратора: {Elevation.IsElevated}");
+            Log.Info($"Started. Elevated: {Elevation.IsElevated}");
             Application.Run(new TrayApplicationContext());
         }
         finally

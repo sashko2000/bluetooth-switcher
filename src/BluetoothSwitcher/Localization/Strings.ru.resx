@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="TraySelectDeviceTitle" xml:space="preserve">
+    <value>Выберите устройство</value>
+  </data>
+  <data name="TraySelectDeviceText" xml:space="preserve">
+    <value>Откройте «Настройки» в меню значка в трее и отметьте устройство.</value>
+  </data>
+  <data name="TrayNoDevices" xml:space="preserve">
+    <value>Нет выбранных устройств</value>
+  </data>
+  <data name="TrayConnecting" xml:space="preserve">
+    <value>Подключение «{0}»…</value>
+  </data>
+  <data name="TrayReconnect" xml:space="preserve">
+    <value>Переподключить «{0}»</value>
+  </data>
+  <data name="TrayConnectNotFound" xml:space="preserve">
+    <value>Подключить «{0}» (не найдено)</value>
+  </data>
+  <data name="TrayConnect" xml:space="preserve">
+    <value>Подключить «{0}»</value>
+  </data>
+  <data name="TrayReconnectTooltip" xml:space="preserve">
+    <value>Устройство подключено к этому компьютеру. Нажмите, чтобы отключить и подключить заново.</value>
+  </data>
+  <data name="TrayItemBattery" xml:space="preserve">
+    <value>{0} — заряд {1}%</value>
+  </data>
+  <data name="LowBatteryTitle" xml:space="preserve">
+    <value>Низкий заряд</value>
+  </data>
+  <data name="LowBatteryText" xml:space="preserve">
+    <value>«{0}»: осталось {1}%. Пора зарядить.</value>
+  </data>
+  <data name="SettingsLowBattery" xml:space="preserve">
+    <value>Предупреждать о низком заряде, % (0 — выкл.):</value>
+  </data>
+  <data name="AppleGroup" xml:space="preserve">
+    <value>Apple Magic Keyboard</value>
+  </data>
+  <data name="AppleDriverInfo" xml:space="preserve">
+    <value>Драйвер Apple из Boot Camp добавляет клавишу Fn (Fn+Backspace = Delete, медиаклавиши) для Magic Keyboard 2015–2021 годов. Он скачивается с серверов Apple при установке.</value>
+  </data>
+  <data name="AppleDriverInstalled" xml:space="preserve">
+    <value>Драйвер установлен.</value>
+  </data>
+  <data name="AppleDriverNotInstalled" xml:space="preserve">
+    <value>Драйвер не установлен.</value>
+  </data>
+  <data name="AppleDriverInstall" xml:space="preserve">
+    <value>Установить драйвер</value>
+  </data>
+  <data name="AppleDriverReinstall" xml:space="preserve">
+    <value>Переустановить драйвер</value>
+  </data>
+  <data name="AppleDriverDownloading" xml:space="preserve">
+    <value>Скачивание драйвера с серверов Apple…</value>
+  </data>
+  <data name="AppleDriverExtracting" xml:space="preserve">
+    <value>Распаковка…</value>
+  </data>
+  <data name="AppleDriverInstalling" xml:space="preserve">
+    <value>Установка (подтвердите запрос администратора, если появится)…</value>
+  </data>
+  <data name="AppleDriverInstallDone" xml:space="preserve">
+    <value>Драйвер установлен. Переподключите клавиатуру, чтобы он заработал.</value>
+  </data>
+  <data name="AppleDriverInstallReboot" xml:space="preserve">
+    <value>Драйвер установлен. Перезагрузите Windows, чтобы он заработал.</value>
+  </data>
+  <data name="AppleDriverUpToDate" xml:space="preserve">
+    <value>Драйвер уже установлен, обновление не требуется.</value>
+  </data>
+  <data name="AppleDriverInstallNoDevice" xml:space="preserve">
+    <value>Драйвер добавлен, но пока ни одна подключённая клавиатура его не использует. Подключите Magic Keyboard и переподключите её.</value>
+  </data>
+  <data name="AppleDriverFailed" xml:space="preserve">
+    <value>Ошибка: {0}</value>
+  </data>
+  <data name="AppleDriverCancelled" xml:space="preserve">
+    <value>Отменено.</value>
+  </data>
+  <data name="AppleFnLabel" xml:space="preserve">
+    <value>Верхний ряд клавиш:</value>
+  </data>
+  <data name="AppleFnStandard" xml:space="preserve">
+    <value>F1–F12 (медиа — с Fn)</value>
+  </data>
+  <data name="AppleFnMedia" xml:space="preserve">
+    <value>Медиаклавиши (F1–F12 — с Fn)</value>
+  </data>
+  <data name="AppleFnAppliedNow" xml:space="preserve">
+    <value>Применено: клавиатура перезапущена с новой настройкой.</value>
+  </data>
+  <data name="AppleFnApplied" xml:space="preserve">
+    <value>Сохранено. Переподключите клавиатуру через меню трея (или перезагрузите Windows), чтобы изменение вступило в силу.</value>
+  </data>
+  <data name="TrayConnectTooltip" xml:space="preserve">
+    <value>Подключить устройство к этому компьютеру</value>
+  </data>
+  <data name="TraySettings" xml:space="preserve">
+    <value>Настройки…</value>
+  </data>
+  <data name="TrayRestartAsAdmin" xml:space="preserve">
+    <value>Перезапустить от имени администратора</value>
+  </data>
+  <data name="TrayOpenLog" xml:space="preserve">
+    <value>Открыть лог</value>
+  </data>
+  <data name="TrayExit" xml:space="preserve">
+    <value>Выход</value>
+  </data>
+  <data name="TrayTooltipBusy" xml:space="preserve">
+    <value>{0} — подключение…</value>
+  </data>
+  <data name="NotifyDone" xml:space="preserve">
+    <value>Готово</value>
+  </data>
+  <data name="NotifyFailed" xml:space="preserve">
+    <value>Не удалось подключить</value>
+  </data>
+  <data name="NotifyError" xml:space="preserve">
+    <value>Ошибка</value>
+  </data>
+  <data name="NotifySaveFailed" xml:space="preserve">
+    <value>Не удалось сохранить настройки: {0}</value>
+  </data>
+  <data name="KindKeyboardMouse" xml:space="preserve">
+    <value>Клавиатура + мышь</value>
+  </data>
+  <data name="KindKeyboard" xml:space="preserve">
+    <value>Клавиатура</value>
+  </data>
+  <data name="KindMouse" xml:space="preserve">
+    <value>Мышь</value>
+  </data>
+  <data name="KindPeripheral" xml:space="preserve">
+    <value>Периферия</value>
+  </data>
+  <data name="KindKeyboardBle" xml:space="preserve">
+    <value>Клавиатура (BLE)</value>
+  </data>
+  <data name="KindBleDevice" xml:space="preserve">
+    <value>BLE-устройство</value>
+  </data>
+  <data name="KindAudio" xml:space="preserve">
+    <value>Аудио (колонка/наушники)</value>
+  </data>
+  <data name="KindComputer" xml:space="preserve">
+    <value>Компьютер</value>
+  </data>
+  <data name="KindPhone" xml:space="preserve">
+    <value>Телефон</value>
+  </data>
+  <data name="KindImaging" xml:space="preserve">
+    <value>Принтер/камера</value>
+  </data>
+  <data name="KindWearable" xml:space="preserve">
+    <value>Носимое устройство</value>
+  </data>
+  <data name="KindHealth" xml:space="preserve">
+    <value>Здоровье</value>
+  </data>
+  <data name="KindToy" xml:space="preserve">
+    <value>Игрушка</value>
+  </data>
+  <data name="KindAccessPoint" xml:space="preserve">
+    <value>Точка доступа</value>
+  </data>
+  <data name="KindOther" xml:space="preserve">
+    <value>Другое</value>
+  </data>
+  <data name="ResultNotFound" xml:space="preserve">
+    <value>«{0}» не найдено среди сопряжённых устройств.</value>
+  </data>
+  <data name="ResultAccessDenied" xml:space="preserve">
+    <value>Windows не разрешила переустановить сервисы устройства без прав администратора. Выберите в меню «Перезапустить от имени администратора».</value>
+  </data>
+  <data name="ResultNoRadio" xml:space="preserve">
+    <value>Bluetooth-адаптер не найден или выключен.</value>
+  </data>
+  <data name="ResultApiError" xml:space="preserve">
+    <value>Ошибка Bluetooth API: {0}.</value>
+  </data>
+  <data name="ResultBleAlreadyConnected" xml:space="preserve">
+    <value>«{0}» (BLE) уже подключено. Принудительное переподключение для BLE Windows не поддерживает.</value>
+  </data>
+  <data name="ResultConnected" xml:space="preserve">
+    <value>«{0}» подключено к этому компьютеру.</value>
+  </data>
+  <data name="ResultReconnected" xml:space="preserve">
+    <value>«{0}» переподключено.</value>
+  </data>
+  <data name="ResultNotConnected" xml:space="preserve">
+    <value>«{0}» не ответило. Проверьте, что устройство включено и рядом. Некоторые устройства принимают входящее подключение только на активном канале.</value>
+  </data>
+  <data name="SettingsTitle" xml:space="preserve">
+    <value>Bluetooth Switcher — настройки</value>
+  </data>
+  <data name="SettingsHint" xml:space="preserve">
+    <value>Отметьте устройства (клавиатуры, колонки, наушники…), которые нужно показывать в меню трея. Клик по пункту подключает устройство, а если оно уже подключено — отключает и подключает заново. Устройство должно быть заранее сопряжено с этим компьютером.</value>
+  </data>
+  <data name="ColumnDevice" xml:space="preserve">
+    <value>Устройство</value>
+  </data>
+  <data name="ColumnAddress" xml:space="preserve">
+    <value>Адрес</value>
+  </data>
+  <data name="ColumnType" xml:space="preserve">
+    <value>Тип</value>
+  </data>
+  <data name="ColumnStatus" xml:space="preserve">
+    <value>Состояние</value>
+  </data>
+  <data name="SettingsRefresh" xml:space="preserve">
+    <value>Обновить список</value>
+  </data>
+  <data name="SettingsSearching" xml:space="preserve">
+    <value>Поиск сопряжённых устройств…</value>
+  </data>
+  <data name="SettingsNoneFound" xml:space="preserve">
+    <value>Сопряжённых устройств не найдено. Выполните сопряжение в параметрах Windows.</value>
+  </data>
+  <data name="SettingsFoundCount" xml:space="preserve">
+    <value>Найдено устройств: {0}. Выделите устройство, чтобы настроить сервисы.</value>
+  </data>
+  <data name="SettingsError" xml:space="preserve">
+    <value>Ошибка: {0}</value>
+  </data>
+  <data name="StatusConnected" xml:space="preserve">
+    <value>Подключено</value>
+  </data>
+  <data name="StatusNotConnected" xml:space="preserve">
+    <value>Не подключено</value>
+  </data>
+  <data name="StatusNotFound" xml:space="preserve">
+    <value>Не найдено</value>
+  </data>
+  <data name="ServicesGroup" xml:space="preserve">
+    <value>Сервисы для переподключения</value>
+  </data>
+  <data name="ServicesGroupFor" xml:space="preserve">
+    <value>Сервисы для переподключения: {0}</value>
+  </data>
+  <data name="ServicesGroupBle" xml:space="preserve">
+    <value>Сервисы для переподключения: {0} — не применяется для BLE</value>
+  </data>
+  <data name="ServicesGroupLoading" xml:space="preserve">
+    <value>Сервисы для переподключения: {0} — загрузка…</value>
+  </data>
+  <data name="ServicesGroupNotFound" xml:space="preserve">
+    <value>Сервисы для переподключения: {0} — устройство не найдено</value>
+  </data>
+  <data name="ServicesAuto" xml:space="preserve">
+    <value>Автоматически (клавиатура/мышь — HID, колонка/наушники — Hands-Free)</value>
+  </data>
+  <data name="ServicesNote" xml:space="preserve">
+    <value>Каждый сервис переподключается ≈ 3 с. Чтобы вернуть микрофон колонки, обычно достаточно Hands-Free.</value>
+  </data>
+  <data name="ServiceVendor" xml:space="preserve">
+    <value>{0} (служебный)</value>
+  </data>
+  <data name="ServiceHintHid" xml:space="preserve">
+    <value>клавиатура/мышь</value>
+  </data>
+  <data name="ServiceHintAudio" xml:space="preserve">
+    <value>звук</value>
+  </data>
+  <data name="ServiceHintMicrophone" xml:space="preserve">
+    <value>микрофон</value>
+  </data>
+  <data name="ServiceHintControls" xml:space="preserve">
+    <value>управление</value>
+  </data>
+  <data name="SettingsTimeout" xml:space="preserve">
+    <value>Таймаут подключения, сек:</value>
+  </data>
+  <data name="SettingsNotifications" xml:space="preserve">
+    <value>Показывать уведомления об успешном подключении</value>
+  </data>
+  <data name="SettingsAutoStart" xml:space="preserve">
+    <value>Запускать вместе с Windows</value>
+  </data>
+  <data name="SettingsLanguage" xml:space="preserve">
+    <value>Язык:</value>
+  </data>
+  <data name="SettingsLanguageSystem" xml:space="preserve">
+    <value>Как в системе</value>
+  </data>
+  <data name="SettingsSave" xml:space="preserve">
+    <value>Сохранить</value>
+  </data>
+  <data name="SettingsCancel" xml:space="preserve">
+    <value>Отмена</value>
+  </data>
+  <data name="SettingsAutoStartFailed" xml:space="preserve">
+    <value>Не удалось изменить автозапуск: {0}</value>
+  </data>
+</root>
