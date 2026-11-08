@@ -1,0 +1,40 @@
+# Builds the app and publishes a GitHub release when a version tag is pushed:
+#   git tag v1.0.0
+#   git push origin v1.0.0
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # create the release and upload the archive
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      TAG: ${{ github.ref_name }} # passed via env, not inlined into scripts
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish (self-contained single exe)
+        shell: pwsh
+        run: |
+          $version = $env:TAG.TrimStart('v')
+          dotnet publish src/BluetoothSwitcher -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true -p:Version=$version -o publish
+          Compress-Archive -Path publish/BluetoothSwitcher.exe -DestinationPath "BluetoothSwitcher-$version-win-x64.zip"
+
+      - name: Create release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = $env:TAG.TrimStart('v')
+          gh release create $env:TAG "BluetoothSwitcher-$version-win-x64.zip" `
+            --title "Bluetooth Switcher $version" --generate-notes

@@ -7,6 +7,12 @@ A Windows tray app that connects or reconnects selected Bluetooth devices in one
 - **disconnects and reconnects a speaker or headphones**, e.g. to bring the microphone (Hands-Free) back;
 - **shows the battery level** of connected devices and warns when it runs low.
 
+## Download
+
+Get the latest `BluetoothSwitcher-<version>-win-x64.zip` from the
+[Releases](../../releases) page, unzip it and run `BluetoothSwitcher.exe` (no installation and no .NET runtime
+needed). The app is not code-signed, so Windows SmartScreen may warn on the first start: **More info → Run anyway**.
+
 ## How it works
 
 1. In **Settings**, check any paired devices (the list comes from Windows: Classic and BLE).
@@ -125,6 +131,16 @@ message explicitly and also retries adding the tray icon for up to two minutes a
 while it is running makes the running instance show its icon and open the settings.
 
 Turning the option off deletes the task. Without it, the tray menu offers **Restart as administrator** (with a UAC prompt).
+
+## Releasing
+
+Pushing a version tag builds the app on GitHub Actions and publishes a release with the archive
+(`.github/workflows/release.yml`); the version is taken from the tag:
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 ## Files
 

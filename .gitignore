@@ -8,3 +8,4 @@ publish/
 # Local Apple Boot Camp driver files (not redistributable)
 _drivers/
 AppleBcUpdate.exe
+*.zip
