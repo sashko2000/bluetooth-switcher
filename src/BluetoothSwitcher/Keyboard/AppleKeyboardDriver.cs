@@ -275,7 +275,7 @@ internal static class AppleKeyboardDriver
     private static void ExtractDriver(string archivePath, string driverDir)
     {
         Directory.CreateDirectory(driverDir);
-        using var archive = RarArchive.Open(archivePath, new ReaderOptions { LookForHeader = true }); // skip the SFX stub
+        using var archive = RarArchive.OpenArchive(archivePath, new ReaderOptions { LookForHeader = true }); // skip the SFX stub
         using var reader = archive.ExtractAllEntries(); // the archive is solid: read sequentially
         int count = 0;
         while (reader.MoveToNextEntry())
