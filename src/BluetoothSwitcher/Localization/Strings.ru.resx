@@ -294,6 +294,12 @@
   <data name="SettingsAutoStart" xml:space="preserve">
     <value>Запускать вместе с Windows</value>
   </data>
+  <data name="SettingsRunAsAdmin" xml:space="preserve">
+    <value>Запускать от имени администратора (без запроса UAC)</value>
+  </data>
+  <data name="OperationCancelled" xml:space="preserve">
+    <value>отменено</value>
+  </data>
   <data name="SettingsLanguage" xml:space="preserve">
     <value>Язык:</value>
   </data>
@@ -307,6 +313,6 @@
     <value>Отмена</value>
   </data>
   <data name="SettingsAutoStartFailed" xml:space="preserve">
-    <value>Не удалось изменить автозапуск: {0}</value>
+    <value>Не удалось изменить параметры запуска: {0}</value>
   </data>
 </root>

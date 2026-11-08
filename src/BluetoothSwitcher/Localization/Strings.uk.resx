@@ -294,6 +294,12 @@
   <data name="SettingsAutoStart" xml:space="preserve">
     <value>Запускати разом із Windows</value>
   </data>
+  <data name="SettingsRunAsAdmin" xml:space="preserve">
+    <value>Запускати від імені адміністратора (без запиту UAC)</value>
+  </data>
+  <data name="OperationCancelled" xml:space="preserve">
+    <value>скасовано</value>
+  </data>
   <data name="SettingsLanguage" xml:space="preserve">
     <value>Мова:</value>
   </data>
@@ -307,6 +313,6 @@
     <value>Скасувати</value>
   </data>
   <data name="SettingsAutoStartFailed" xml:space="preserve">
-    <value>Не вдалося змінити автозапуск: {0}</value>
+    <value>Не вдалося змінити параметри запуску: {0}</value>
   </data>
 </root>

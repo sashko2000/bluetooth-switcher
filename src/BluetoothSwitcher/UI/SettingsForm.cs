@@ -17,6 +17,7 @@ internal sealed class SettingsForm : Form
     private readonly NumericUpDown _lowBattery;
     private readonly CheckBox _notifications;
     private readonly CheckBox _autoStart;
+    private readonly CheckBox _runAsAdmin;
     private readonly ComboBox _language;
     private readonly Label _status;
 
@@ -40,6 +41,9 @@ internal sealed class SettingsForm : Form
     /// <summary>New settings if the user clicked "Save"; otherwise null.</summary>
     public AppSettings? Result { get; private set; }
 
+    /// <summary>"Run as administrator" was just turned on in a non-elevated instance: restart through the task.</summary>
+    public bool RestartElevatedRequested { get; private set; }
+
     public SettingsForm(AppSettings settings)
     {
         _settings = settings;
@@ -48,8 +52,8 @@ internal sealed class SettingsForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         AutoScaleMode = AutoScaleMode.Dpi;
         Font = SystemFonts.MessageBoxFont ?? Font;
-        MinimumSize = new Size(640, 800);
-        Size = new Size(800, 880);
+        MinimumSize = new Size(640, 830);
+        Size = new Size(800, 910);
         ShowInTaskbar = true;
         Icon = TrayIconFactory.Create();
 
@@ -141,7 +145,9 @@ internal sealed class SettingsForm : Form
             Width = 70,
         };
         _notifications = new CheckBox { Text = Strings.SettingsNotifications, AutoSize = true, Checked = settings.ShowNotifications };
-        _autoStart = new CheckBox { Text = Strings.SettingsAutoStart, AutoSize = true, Checked = AutoStart.IsEnabled };
+        bool taskExists = ElevatedTask.TryGetState(out bool taskAtLogon);
+        _autoStart = new CheckBox { Text = Strings.SettingsAutoStart, AutoSize = true, Checked = AutoStart.IsEnabled || taskAtLogon };
+        _runAsAdmin = new CheckBox { Text = Strings.SettingsRunAsAdmin, AutoSize = true, Checked = taskExists };
 
         var options = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, Padding = new Padding(0, 8, 0, 0) };
         options.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -166,11 +172,13 @@ internal sealed class SettingsForm : Form
         options.SetColumnSpan(_notifications, 2);
         options.Controls.Add(_autoStart, 0, 4);
         options.SetColumnSpan(_autoStart, 2);
+        options.Controls.Add(_runAsAdmin, 0, 5);
+        options.SetColumnSpan(_runAsAdmin, 2);
 
         // The form is shown modelessly (Show, not ShowDialog), so a button's DialogResult does not close it:
         // both buttons close the form explicitly.
         _ok = new Button { Text = Strings.SettingsSave, AutoSize = true };
-        _ok.Click += (_, _) => Save();
+        _ok.Click += async (_, _) => await SaveAsync();
         _cancel = new Button { Text = Strings.SettingsCancel, AutoSize = true };
         _cancel.Click += (_, _) => Close();
         AcceptButton = _ok;
@@ -590,8 +598,29 @@ internal sealed class SettingsForm : Form
         }
     }
 
-    private void Save()
+    private async Task SaveAsync()
     {
+        _ok.Enabled = false;
+        _cancel.Enabled = false;
+        try
+        {
+            await ApplyStartupAsync(_autoStart.Checked, _runAsAdmin.Checked);
+        }
+        catch (Exception ex)
+        {
+            // Keep the window open so the user can change the choice or try again.
+            if (ex is not OperationCanceledException)
+            {
+                Log.Error("Failed to change startup settings", ex);
+            }
+
+            string reason = ex is OperationCanceledException ? Strings.OperationCancelled : ex.Message;
+            MessageBox.Show(this, Strings.SettingsAutoStartFailed(reason), Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            _ok.Enabled = true;
+            _cancel.Enabled = true;
+            return;
+        }
+
         var devices = _loaded
             ? _list.Items.Cast<ListViewItem>().Where(i => i.Checked).Select(i => (SavedDevice)i.Tag!).ToList()
             : _settings.Devices;
@@ -605,19 +634,42 @@ internal sealed class SettingsForm : Form
             Language = (_language.SelectedItem as LanguageItem)?.Code ?? "",
         };
 
-        try
+        RestartElevatedRequested = _runAsAdmin.Checked && !Elevation.IsElevated;
+        Close();
+    }
+
+    /// <summary>
+    /// Start with Windows / run as administrator:
+    /// - as administrator: a scheduled task (with a logon trigger if autostart is on), no Run key;
+    /// - otherwise: no task, and the HKCU Run key for autostart.
+    /// Creating or deleting the task asks for administrator rights once.
+    /// </summary>
+    private static async Task ApplyStartupAsync(bool startWithWindows, bool runAsAdmin)
+    {
+        bool taskExists = ElevatedTask.TryGetState(out bool taskAtLogon);
+        if (runAsAdmin)
         {
-            if (_autoStart.Checked != AutoStart.IsEnabled)
+            if (!taskExists || taskAtLogon != startWithWindows)
             {
-                AutoStart.Set(_autoStart.Checked);
+                await ElevatedTask.CreateAsync(startWithWindows);
+            }
+
+            if (AutoStart.IsEnabled)
+            {
+                AutoStart.Set(false); // the task starts the app; avoid a second, non-elevated start
             }
         }
-        catch (Exception ex)
+        else
         {
-            Log.Error("Failed to change autostart", ex);
-            MessageBox.Show(this, Strings.SettingsAutoStartFailed(ex.Message), Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        }
+            if (taskExists)
+            {
+                await ElevatedTask.DeleteAsync();
+            }
 
-        Close();
+            if (AutoStart.IsEnabled != startWithWindows)
+            {
+                AutoStart.Set(startWithWindows);
+            }
+        }
     }
 }

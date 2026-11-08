@@ -72,7 +72,7 @@ top row do not work. Apple's Boot Camp keyboard driver fixes that, and the app c
   already connected (Automatic, or a manual selection).
 - **Apple Magic Keyboard** driver and top row behavior (see above).
 - **Language**, **connection timeout**, **low battery warning** threshold, notifications on success,
-  and **start with Windows**.
+  **start with Windows** and **run as administrator** (see below).
 
 ## Languages
 
@@ -107,14 +107,24 @@ dotnet publish src/BluetoothSwitcher -c Release -r win-x64 --self-contained true
 
 ## Administrator rights
 
-On some systems `BluetoothSetServiceState` returns `ERROR_ACCESS_DENIED` without elevation.
-In that case the menu offers **Restart as administrator**.
-If you need elevation permanently, autostart via the `Run` registry key will not work (UAC blocks it).
-Use a Task Scheduler task with “Run with highest privileges” instead:
+Reinstalling device services (`BluetoothSetServiceState`) may return `ERROR_ACCESS_DENIED` without elevation,
+and installing the Apple keyboard driver always needs administrator rights.
 
-```powershell
-schtasks /Create /TN "BluetoothSwitcher" /TR "\"C:\Path\BluetoothSwitcher.exe\"" /SC ONLOGON /RL HIGHEST /F
-```
+Turn on **Settings → Run as administrator (without a UAC prompt)**. The app creates a Task Scheduler task with
+the highest privileges (one UAC confirmation). From then on:
+
+- if **Start with Windows** is on, the task starts the app elevated 15 seconds after logon, once the taskbar exists
+  (the `Run` registry key is not used, since UAC would block an elevated start from it);
+- when the app is started without elevation (e.g. from a shortcut), it relaunches itself through the task —
+  elevated, with no UAC prompt;
+- the task is created from XML so that Windows does not stop it after 3 days, skip it on battery power, or run it
+  with below-normal priority (the defaults of `schtasks /Create`).
+
+An elevated app does not receive Explorer's “taskbar created” notification by default (UIPI), so it allows that
+message explicitly and also retries adding the tray icon for up to two minutes after start. Starting the app again
+while it is running makes the running instance show its icon and open the settings.
+
+Turning the option off deletes the task. Without it, the tray menu offers **Restart as administrator** (with a UAC prompt).
 
 ## Files
 
@@ -136,7 +146,7 @@ src/BluetoothSwitcher/
 │  ├─ HidBatteryReader.cs         — battery level from HID reports (incl. Apple)
 │  ├─ HidNative.cs                — shared hid.dll interop, HID collection lookup
 │  └─ Models.cs
-├─ Infrastructure/                — settings, log, autostart, UAC
+├─ Infrastructure/                — settings, log, autostart, elevation (scheduled task), UAC
 ├─ Keyboard/
 │  └─ AppleKeyboardDriver.cs      — downloads/installs Apple's keyboard driver, Fn mode
 ├─ Localization/                  — Strings*.resx (en/ru/uk), language selection

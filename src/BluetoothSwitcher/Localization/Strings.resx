@@ -294,6 +294,12 @@
   <data name="SettingsAutoStart" xml:space="preserve">
     <value>Start with Windows</value>
   </data>
+  <data name="SettingsRunAsAdmin" xml:space="preserve">
+    <value>Run as administrator (without a UAC prompt)</value>
+  </data>
+  <data name="OperationCancelled" xml:space="preserve">
+    <value>cancelled</value>
+  </data>
   <data name="SettingsLanguage" xml:space="preserve">
     <value>Language:</value>
   </data>
@@ -307,6 +313,6 @@
     <value>Cancel</value>
   </data>
   <data name="SettingsAutoStartFailed" xml:space="preserve">
-    <value>Could not change autostart: {0}</value>
+    <value>Could not change the startup settings: {0}</value>
   </data>
 </root>

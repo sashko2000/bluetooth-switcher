@@ -108,6 +108,8 @@ internal static class Strings
     public static string SettingsTimeout => Get(nameof(SettingsTimeout));
     public static string SettingsNotifications => Get(nameof(SettingsNotifications));
     public static string SettingsAutoStart => Get(nameof(SettingsAutoStart));
+    public static string SettingsRunAsAdmin => Get(nameof(SettingsRunAsAdmin));
+    public static string OperationCancelled => Get(nameof(OperationCancelled));
     public static string SettingsLanguage => Get(nameof(SettingsLanguage));
     public static string SettingsLanguageSystem => Get(nameof(SettingsLanguageSystem));
     public static string SettingsSave => Get(nameof(SettingsSave));

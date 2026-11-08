@@ -20,6 +20,9 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private DateTime _batteryRefreshedAt = DateTime.MinValue;
     private bool _batteryRefreshing;
     private readonly HashSet<string> _lowBatteryNotified = [];
+    private readonly ShellMessageWindow _shellWindow;
+    private readonly System.Windows.Forms.Timer _trayRetryTimer = new() { Interval = 2000 };
+    private int _trayAttempts;
 
     private AppSettings _settings;
     private SettingsForm? _settingsForm;
@@ -45,6 +48,31 @@ internal sealed class TrayApplicationContext : ApplicationContext
         };
         _tray.MouseDoubleClick += OnTrayDoubleClick;
 
+        // Keep the tray icon visible when the app is started (elevated) at logon before the taskbar exists,
+        // and when Explorer restarts. See ShellMessages for why the message filter is needed.
+        ShellMessages.AllowFromNonElevatedProcesses();
+        _shellWindow = new ShellMessageWindow();
+        _shellWindow.TaskbarCreated += (_, _) =>
+        {
+            Log.Info("Taskbar created: adding the tray icon again");
+            ReAddTrayIcon();
+        };
+        _shellWindow.ShowRequested += (_, _) =>
+        {
+            Log.Info("The app was started again: showing the running instance");
+            ReAddTrayIcon();
+            ShowSettings();
+        };
+        _trayRetryTimer.Tick += OnTrayRetryTick;
+        if (!ShellMessages.IsTaskbarReady)
+        {
+            Log.Info("Taskbar is not ready yet: will retry adding the tray icon");
+            _trayRetryTimer.Start();
+        }
+
+        // A task created by an older version (e.g. without the logon delay) is replaced; no UAC prompt when elevated.
+        _ = ElevatedTask.EnsureUpToDateAsync();
+
         _monitor.StatusChanged += (_, _) => _ui.Post(_ =>
         {
             RebuildMenu();
@@ -69,6 +97,30 @@ internal sealed class TrayApplicationContext : ApplicationContext
         if (_settings.Devices.Count == 0)
         {
             Notify(Strings.TraySelectDeviceTitle, Strings.TraySelectDeviceText, ToolTipIcon.Info);
+        }
+    }
+
+    /// <summary>Removes and adds the icon again (NotifyIcon only re-adds it on Visible false → true).</summary>
+    private void ReAddTrayIcon()
+    {
+        _tray.Visible = false;
+        _tray.Visible = true;
+    }
+
+    /// <summary>Every 2 s for up to 2 minutes after start: add the icon as soon as the taskbar appears.</summary>
+    private void OnTrayRetryTick(object? sender, EventArgs e)
+    {
+        _trayAttempts++;
+        if (ShellMessages.IsTaskbarReady)
+        {
+            _trayRetryTimer.Stop();
+            ReAddTrayIcon();
+            Log.Info($"Tray icon added at attempt {_trayAttempts}");
+        }
+        else if (_trayAttempts >= 60)
+        {
+            _trayRetryTimer.Stop();
+            Log.Info("Taskbar did not appear within 2 minutes; waiting for TaskbarCreated");
         }
     }
 
@@ -298,6 +350,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _settingsForm.FormClosed += async (_, _) =>
         {
             var result = _settingsForm.Result;
+            bool restartElevated = _settingsForm.RestartElevatedRequested;
             _settingsForm = null;
             if (result is null)
             {
@@ -314,6 +367,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
             {
                 Log.Error("Failed to save settings", ex);
                 Notify(Strings.NotifyError, Strings.NotifySaveFailed(ex.Message), ToolTipIcon.Error, force: true);
+            }
+
+            if (restartElevated)
+            {
+                RestartElevated();
+                return;
             }
 
             RebuildMenu();
@@ -369,6 +428,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
         if (disposing)
         {
             _batteryTimer.Dispose();
+            _trayRetryTimer.Dispose();
+            _shellWindow.Dispose();
             _monitor.Dispose();
             _tray.Dispose();
             _menu.Dispose();

@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Security.Cryptography;
 using BluetoothSwitcher.Infrastructure;
 using Microsoft.Win32;
@@ -145,7 +144,7 @@ internal static class AppleKeyboardDriver
 
             bool wasInstalled = IsInstalled;
             progress.Report(InstallStage.Installing);
-            int exitCode = await RunAsAdminAsync(
+            int exitCode = await Elevation.RunAsAdminAsync(
                 Path.Combine(Environment.SystemDirectory, "pnputil.exe"),
                 $"/add-driver \"{inf}\" /install", ct);
             Log.Info($"Apple keyboard driver: pnputil exit code {exitCode}");
@@ -189,7 +188,7 @@ internal static class AppleKeyboardDriver
             bool restarted = false;
             foreach (var device in devices)
             {
-                int code = await RunAsAdminAsync(pnputil, $"/restart-device \"{device}\"", ct);
+                int code = await Elevation.RunAsAdminAsync(pnputil, $"/restart-device \"{device}\"", ct);
                 restarted |= code is 0 or ErrorSuccessRebootRequired;
             }
 
@@ -203,7 +202,7 @@ internal static class AppleKeyboardDriver
             command += $" & \"{pnputil}\" /restart-device \"{device}\"";
         }
 
-        int exitCode = await RunAsAdminAsync(Path.Combine(Environment.SystemDirectory, "cmd.exe"), $"/c \"{command}\"", ct);
+        int exitCode = await Elevation.RunAsAdminAsync(Path.Combine(Environment.SystemDirectory, "cmd.exe"), $"/c \"{command}\"", ct);
         Log.Info($"Apple keyboard: elevated command exit code {exitCode}");
         if (MediaKeysByDefault != media)
         {
@@ -297,53 +296,5 @@ internal static class AppleKeyboardDriver
         }
 
         Log.Info($"Apple keyboard driver: extracted {count} file(s)");
-    }
-
-    /// <summary>Runs a tool with administrator rights (directly if already elevated, otherwise via a UAC prompt).</summary>
-    private static async Task<int> RunAsAdminAsync(string fileName, string arguments, CancellationToken ct)
-    {
-        var info = new ProcessStartInfo(fileName, arguments)
-        {
-            CreateNoWindow = true,
-            WindowStyle = ProcessWindowStyle.Hidden,
-        };
-
-        if (Elevation.IsElevated)
-        {
-            info.UseShellExecute = false;
-            info.RedirectStandardOutput = true;
-        }
-        else
-        {
-            info.UseShellExecute = true;
-            info.Verb = "runas";
-        }
-
-        Process? process;
-        try
-        {
-            process = Process.Start(info);
-        }
-        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) // ERROR_CANCELLED: UAC prompt declined
-        {
-            throw new OperationCanceledException(ex.Message, ex);
-        }
-
-        using (process)
-        {
-            if (process is null)
-            {
-                throw new InvalidOperationException($"Could not start {Path.GetFileName(fileName)}.");
-            }
-
-            if (info.RedirectStandardOutput)
-            {
-                string output = await process.StandardOutput.ReadToEndAsync(ct);
-                Log.Info($"{Path.GetFileName(fileName)} {arguments}{Environment.NewLine}{output.Trim()}");
-            }
-
-            await process.WaitForExitAsync(ct);
-            return process.ExitCode;
-        }
     }
 }
