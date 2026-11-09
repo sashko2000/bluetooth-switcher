@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- The Windows SDK version is required for the Windows.Devices.Bluetooth WinRT APIs -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <!-- Fixed-size buffer in the Bluetooth pairing response structure. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <RootNamespace>MagicSwitcher</RootNamespace>
+    <AssemblyName>MagicSwitcher</AssemblyName>
+    <Product>MagicSwitcher</Product>
+    <Version>1.1.0</Version>
+    <NeutralLanguage>en</NeutralLanguage>
+    <!-- Ship only the translated UI languages (skips framework satellite assemblies for other cultures). -->
+    <SatelliteResourceLanguages>en;ru;uk</SatelliteResourceLanguages>
+
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationVisualStyles>true</ApplicationVisualStyles>
+    <ApplicationUseCompatibleTextRendering>false</ApplicationUseCompatibleTextRendering>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- RAR extraction for Apple's Boot Camp update package (the keyboard driver is downloaded on demand). -->
+    <PackageReference Include="SharpCompress" Version="0.50.8" />
+  </ItemGroup>
+
+</Project>

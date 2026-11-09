@@ -26,9 +26,9 @@ jobs:
         shell: pwsh
         run: |
           $version = $env:TAG.TrimStart('v')
-          dotnet publish src/BluetoothSwitcher -c Release -r win-x64 --self-contained true `
+          dotnet publish src/MagicSwitcher -c Release -r win-x64 --self-contained true `
             -p:PublishSingleFile=true -p:Version=$version -o publish
-          Compress-Archive -Path publish/BluetoothSwitcher.exe -DestinationPath "BluetoothSwitcher-$version-win-x64.zip"
+          Compress-Archive -Path publish/MagicSwitcher.exe -DestinationPath "MagicSwitcher-$version-win-x64.zip"
 
       - name: Create release
         shell: pwsh
@@ -36,5 +36,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $version = $env:TAG.TrimStart('v')
-          gh release create $env:TAG "BluetoothSwitcher-$version-win-x64.zip" `
-            --title "Bluetooth Switcher $version" --generate-notes
+          gh release create $env:TAG "MagicSwitcher-$version-win-x64.zip" `
+            --title "MagicSwitcher $version" --generate-notes

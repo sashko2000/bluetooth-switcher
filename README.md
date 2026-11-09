@@ -1,4 +1,4 @@
-# Bluetooth Switcher
+# MagicSwitcher
 
 **Apple Magic Keyboard on Windows, done right.** A small tray app for people who share one Magic Keyboard between a
 Windows PC and a Mac, an iPad, a phone or another PC:
@@ -29,15 +29,15 @@ Tested with Apple Magic Keyboard A2450 (2021); the Fn driver supports Magic Keyb
 
 ## Download
 
-Get the latest `BluetoothSwitcher-<version>-win-x64.zip` from the
-[Releases](../../releases) page, unzip it and run `BluetoothSwitcher.exe` (no installation and no .NET runtime
+Get the latest `MagicSwitcher-<version>-win-x64.zip` from the
+[Releases](../../releases) page, unzip it and run `MagicSwitcher.exe` (no installation and no .NET runtime
 needed). The app is not code-signed, so Windows SmartScreen may warn on the first start: **More info → Run anyway**.
 
 ## Quick start with Magic Keyboard
 
 1. Pair the keyboard with Windows once (Settings → Bluetooth & devices → Add device; turn the keyboard off and on
    to make it visible).
-2. Start `BluetoothSwitcher.exe`, open **Settings** from the tray icon and check **Magic Keyboard**.
+2. Start `MagicSwitcher.exe`, open **Settings** from the tray icon and check **Magic Keyboard**.
 3. Check **Restore at startup and sign-in** and click **Install service** (one administrator confirmation).
 4. Optionally, in **Apple Magic Keyboard**, click **Install driver** and choose the **top row** behavior.
 5. Click **Save**.
@@ -74,7 +74,7 @@ listens for a new host for a short while after it wakes up. It types within abou
 
 The service also performs the actions that need administrator rights for the tray app (reinstalling device services,
 the Apple keyboard driver), so the app itself runs without them. It is installed to
-`%ProgramFiles%\Bluetooth Switcher` and runs as LocalSystem: a service must not start an executable that a normal user
+`%ProgramFiles%\MagicSwitcher` and runs as LocalSystem: a service must not start an executable that a normal user
 could replace. After updating the app, use **Update service** in the settings. Tested with Apple Magic Keyboard (A2450).
 
 ## Fn key and top row
@@ -154,7 +154,7 @@ took the keyboard over (see above), and the tray's **Connect** goes through the 
 The UI is available in English, Russian and Ukrainian. By default the Windows display language is used
 (English if it is not supported). The language can be changed in **Settings**.
 
-Strings live in `src/BluetoothSwitcher/Localization/Strings*.resx`. To add a language, copy `Strings.resx`
+Strings live in `src/MagicSwitcher/Localization/Strings*.resx`. To add a language, copy `Strings.resx`
 to `Strings.<culture>.resx` (e.g. `Strings.de.resx`), translate the values and add the language to
 `AppLanguage.Supported` and to `SatelliteResourceLanguages` in the `.csproj`.
 
@@ -171,13 +171,13 @@ to `Strings.<culture>.resx` (e.g. `Strings.de.resx`), translate the values and a
 
 ```powershell
 dotnet build -c Release
-dotnet run --project src/BluetoothSwitcher
+dotnet run --project src/MagicSwitcher
 
 # Publish to a folder (requires the .NET 10 Desktop Runtime)
-dotnet publish src/BluetoothSwitcher -c Release -r win-x64 --self-contained false -o publish
+dotnet publish src/MagicSwitcher -c Release -r win-x64 --self-contained false -o publish
 
 # Or fully self-contained
-dotnet publish src/BluetoothSwitcher -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
+dotnet publish src/MagicSwitcher -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
 ```
 
 ## Administrator rights
@@ -187,8 +187,12 @@ The app runs without administrator rights. The actions that need them — reinst
 Fn mode — go through the background service when it is installed. Without the service, the app asks for a UAC
 confirmation when Windows denies an action.
 
-Versions before 1.1 ran the app elevated through a Task Scheduler task. The first start of 1.1 removes that task
-(and keeps **Start with Windows** through the usual `Run` registry key).
+## Upgrading from Bluetooth Switcher
+
+Before 1.1 the app was called **Bluetooth Switcher**. On the first start, MagicSwitcher copies its settings from
+`%AppData%\BluetoothSwitcher` and moves the **Start with Windows** entry. Bluetooth Switcher 1.0 ran elevated through
+a Task Scheduler task: MagicSwitcher removes it (one UAC confirmation). Installing the MagicSwitcher service removes an
+older Bluetooth Switcher service.
 
 ## Releasing
 
@@ -204,16 +208,16 @@ git push origin v1.1.0
 
 | Path | Purpose |
 |---|---|
-| `%AppData%\BluetoothSwitcher\settings.json` | settings (selected devices and services, timeout, language, battery threshold) |
-| `%AppData%\BluetoothSwitcher\log.txt` | log (can be opened from the tray menu) |
-| `%ProgramFiles%\Bluetooth Switcher\` | the service's copy of the app |
-| `%ProgramData%\BluetoothSwitcher\service.json` | devices the service restores |
-| `%ProgramData%\BluetoothSwitcher\service-log.txt` | service log (**Open service log** in the tray menu) |
+| `%AppData%\MagicSwitcher\settings.json` | settings (selected devices and services, timeout, language, battery threshold) |
+| `%AppData%\MagicSwitcher\log.txt` | log (can be opened from the tray menu) |
+| `%ProgramFiles%\MagicSwitcher\` | the service's copy of the app |
+| `%ProgramData%\MagicSwitcher\service.json` | devices the service restores |
+| `%ProgramData%\MagicSwitcher\service-log.txt` | service log (**Open service log** in the tray menu) |
 
 ## Project structure
 
 ```
-src/BluetoothSwitcher/
+src/MagicSwitcher/
 ├─ Program.cs                     — entry point: tray app, service (--service), elevated helpers
 ├─ Bluetooth/
 │  ├─ BluetoothManager.cs         — device enumeration and reconnect logic
