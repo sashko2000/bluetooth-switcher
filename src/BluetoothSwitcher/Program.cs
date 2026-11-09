@@ -1,4 +1,5 @@
 using BluetoothSwitcher.Infrastructure;
+using BluetoothSwitcher.Service;
 using BluetoothSwitcher.UI;
 
 namespace BluetoothSwitcher;
@@ -6,7 +7,7 @@ namespace BluetoothSwitcher;
 internal static class Program
 {
     private const string MutexName = @"Local\BluetoothSwitcher.SingleInstance";
-    internal const string RestartArgument = "--restart";
+    private const string ServiceArgument = "--service";
 
     private static bool IsAnotherInstanceRunning()
     {
@@ -26,25 +27,62 @@ internal static class Program
         }
     }
 
+    private static bool Has(string[] args, string name) => args.Contains(name, StringComparer.OrdinalIgnoreCase);
+
     [STAThread]
-    private static void Main(string[] args)
+    private static int Main(string[] args)
     {
-        bool isRestart = args.Contains(RestartArgument, StringComparer.OrdinalIgnoreCase);
-        bool fromTask = args.Contains(ElevatedTask.LaunchArgument, StringComparer.OrdinalIgnoreCase);
+        // The same executable is the Windows service and the elevated helpers the tray app starts.
+        if (Has(args, ServiceArgument))
+        {
+            AppPaths.UseMachineData();
+            AppDomain.CurrentDomain.UnhandledException += (_, e) => Log.Error("Unhandled exception", e.ExceptionObject as Exception);
+            TaskScheduler.UnobservedTaskException += (_, e) => { Log.Error("Unobserved task exception", e.Exception); e.SetObserved(); };
+            return ServiceHost.Run() ? 0 : 1;
+        }
+
+        if (Has(args, ServiceInstaller.InstallArgument))
+        {
+            return ServiceInstaller.InstallElevated();
+        }
+
+        if (Has(args, ServiceInstaller.UninstallArgument))
+        {
+            return ServiceInstaller.UninstallElevated();
+        }
+
+        if (Has(args, PrivilegedActions.ReinstallArgument))
+        {
+            return PrivilegedActions.RunReinstallElevated(args);
+        }
+
+        RunTray(args);
+        return 0;
+    }
+
+    private static void RunTray(string[] args)
+    {
+        bool fromTask = Has(args, ElevatedTask.LaunchArgument);
 
         // Already running (e.g. without a visible icon): ask that instance to show itself instead of silently exiting.
-        if (!isRestart && !fromTask && IsAnotherInstanceRunning())
+        if (!fromTask && IsAnotherInstanceRunning())
         {
             ShellMessages.BroadcastShowInstance();
             return;
         }
 
-        // "Run as administrator" is on (the scheduled task exists) but we were started without elevation:
-        // hand over to the task, which starts an elevated instance without a UAC prompt.
-        // fromTask prevents a loop when the task itself cannot elevate (e.g. a standard user account).
-        if (!fromTask && !Elevation.IsElevated && ElevatedTask.Exists() && ElevatedTask.Run())
+        // Versions before 1.1 ran elevated through a scheduled task. The service replaces it: the elevated
+        // instance removes the task (no UAC prompt needed), so start it once through the task if needed.
+        if (ElevatedTask.Exists())
         {
-            return;
+            if (Elevation.IsElevated)
+            {
+                ElevatedTask.MigrateToRunKey();
+            }
+            else if (!fromTask && ElevatedTask.Run())
+            {
+                return;
+            }
         }
 
         Mutex? mutex = null;
@@ -52,10 +90,9 @@ internal static class Program
         try
         {
             mutex = new Mutex(initiallyOwned: true, MutexName, out ownsMutex);
-            if (!ownsMutex && (isRestart || fromTask))
+            if (!ownsMutex && fromTask)
             {
-                // The previous instance (e.g. when restarting as administrator)
-                // is still shutting down, so give it some time.
+                // The instance that started the task is still shutting down, so give it some time.
                 try { ownsMutex = mutex.WaitOne(TimeSpan.FromSeconds(10)); }
                 catch (AbandonedMutexException) { ownsMutex = true; }
             }
@@ -79,7 +116,7 @@ internal static class Program
         try
         {
             ApplicationConfiguration.Initialize();
-            Log.Info($"Started. Elevated: {Elevation.IsElevated}");
+            Log.Info($"Started {AppInfo.Version}. Elevated: {Elevation.IsElevated}");
             Application.Run(new TrayApplicationContext());
         }
         finally

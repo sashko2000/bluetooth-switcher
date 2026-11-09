@@ -9,11 +9,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
+    <!-- Fixed-size buffer in the Bluetooth pairing response structure. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <RootNamespace>BluetoothSwitcher</RootNamespace>
     <AssemblyName>BluetoothSwitcher</AssemblyName>
     <Product>Bluetooth Switcher</Product>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <NeutralLanguage>en</NeutralLanguage>
     <!-- Ship only the translated UI languages (skips framework satellite assemblies for other cultures). -->
     <SatelliteResourceLanguages>en;ru;uk</SatelliteResourceLanguages>

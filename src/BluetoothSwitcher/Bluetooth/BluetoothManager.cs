@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using BluetoothSwitcher.Infrastructure;
 using BluetoothSwitcher.Localization;
+using BluetoothSwitcher.Service;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Devices.Enumeration;
@@ -137,7 +138,8 @@ public static class BluetoothManager
 
         // Step 2. Reinstall services (same as "Disconnect → Connect" in Windows Settings).
         Log.Info($"[{saved.DisplayName}] {(wasConnected ? "full reconnect" : "step 2")}: reinstalling services");
-        int error = await Task.Run(() => NativeBluetooth.ReinstallServices(saved.Address, TimeSpan.FromSeconds(1), saved.Services, full: !wasConnected), ct);
+        // Through the service when it is installed (no administrator rights needed here), otherwise directly or with UAC.
+        int error = await PrivilegedActions.ReinstallServicesAsync(saved.Address, saved.Services, full: !wasConnected, ct);
         switch (error)
         {
             case NativeBluetooth.ErrorSuccess:

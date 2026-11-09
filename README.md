@@ -5,7 +5,9 @@ A Windows tray app that connects or reconnects selected Bluetooth devices in one
 - **switches a multi-host keyboard** to the current computer — no need to turn on the other computer
   or press the channel button on the keyboard;
 - **disconnects and reconnects a speaker or headphones**, e.g. to bring the microphone (Hands-Free) back;
-- **shows the battery level** of connected devices and warns when it runs low.
+- **shows the battery level** of connected devices and warns when it runs low;
+- with the optional **background service**, **brings a keyboard back at startup and sign-in** — even on the
+  Windows sign-in screen — and pairs it again without a dialog if another device (a phone, another PC) took it over.
 
 ## Download
 
@@ -39,7 +41,37 @@ needed). The app is not code-signed, so Windows SmartScreen may warn on the firs
 > switched from software at all. Speakers that support only one connection at a time may also refuse
 > until they are disconnected from the other computer.
 
-The app does not pair devices: it works only with devices that are already paired with Windows.
+Without the service, the app does not pair devices: it works with devices that are already paired with Windows.
+For keyboards marked **Restore at startup and sign-in**, the service also handles the case where another host
+took the keyboard over (see below), and the tray's **Connect** goes through the service.
+
+## Background service: keyboard at startup and sign-in
+
+Some multi-host keyboards — Apple Magic Keyboard in particular — keep the pairing key of only one host. After the
+keyboard was used with a phone or another computer, it rejects this PC until it is paired again, and Windows asks
+for confirmation in a dialog. Before you sign in there is nobody to answer it, so the keyboard simply does not type.
+
+The optional Windows service fixes that. Install it in **Settings → Background service → Install service**
+(one administrator confirmation) and check **Restore at startup and sign-in** for the keyboard. The service:
+
+- reacts to events: Windows startup, sign-in, unlock, wake from sleep, the display turning on, and **Connect** in the tray;
+- first gives the keyboard time to reconnect by itself (45 seconds after startup or wake: knocking earlier breaks a
+  connection that is coming up and makes Windows drop the key), then “knocks” every 20–30 seconds for up to 10 minutes;
+- if Windows still has the key, reinstalls the HID service; if the key is gone (or Windows forgot the device),
+  pairs again with bonding (`BluetoothAuthenticateDeviceEx`), answers the pairing request itself
+  (`BluetoothRegisterForAuthenticationEx`) so no dialog appears, and enables the HID service;
+- never knocks outside these events: when you hand the keyboard to a phone on purpose, it is left alone.
+
+After another host used the keyboard, turn the keyboard off and on (or press a key) on the sign-in screen: it only
+listens for a new host for a short while after it wakes up. It types within about a minute.
+
+> 🔒 Automatic confirmation skips the pairing code check. The service confirms only devices you selected and only while
+> it is restoring them after one of the events above; at any other time Windows asks as usual.
+
+The service also performs the actions that need administrator rights for the tray app (reinstalling device services,
+the Apple keyboard driver), so the app itself runs without them. It is installed to
+`%ProgramFiles%\Bluetooth Switcher` and runs as LocalSystem: a service must not start an executable that a normal user
+could replace. After updating the app, use **Update service** in the settings. Tested with Apple Magic Keyboard (A2450).
 
 ## Battery level
 
@@ -74,11 +106,12 @@ top row do not work. Apple's Boot Camp keyboard driver fixes that, and the app c
 
 ## Settings
 
-- **Devices** shown in the tray menu, and for each Classic device the **services to reconnect** when it is
-  already connected (Automatic, or a manual selection).
+- **Devices** shown in the tray menu, and for each Classic device **Restore at startup and sign-in** (needs the
+  service) and the **services to reconnect** when it is already connected (Automatic, or a manual selection).
+- **Background service**: install, update or remove it (see above).
 - **Apple Magic Keyboard** driver and top row behavior (see above).
-- **Language**, **connection timeout**, **low battery warning** threshold, notifications on success,
-  **start with Windows** and **run as administrator** (see below).
+- **Language**, **connection timeout**, **low battery warning** threshold, notifications on success and
+  **start with Windows**.
 
 ## Languages
 
@@ -113,24 +146,13 @@ dotnet publish src/BluetoothSwitcher -c Release -r win-x64 --self-contained true
 
 ## Administrator rights
 
-Reinstalling device services (`BluetoothSetServiceState`) may return `ERROR_ACCESS_DENIED` without elevation,
-and installing the Apple keyboard driver always needs administrator rights.
+The app runs without administrator rights. The actions that need them — reinstalling device services
+(`BluetoothSetServiceState` may return `ERROR_ACCESS_DENIED`), installing the Apple keyboard driver and changing its
+Fn mode — go through the background service when it is installed. Without the service, the app asks for a UAC
+confirmation when Windows denies an action.
 
-Turn on **Settings → Run as administrator (without a UAC prompt)**. The app creates a Task Scheduler task with
-the highest privileges (one UAC confirmation). From then on:
-
-- if **Start with Windows** is on, the task starts the app elevated 15 seconds after logon, once the taskbar exists
-  (the `Run` registry key is not used, since UAC would block an elevated start from it);
-- when the app is started without elevation (e.g. from a shortcut), it relaunches itself through the task —
-  elevated, with no UAC prompt;
-- the task is created from XML so that Windows does not stop it after 3 days, skip it on battery power, or run it
-  with below-normal priority (the defaults of `schtasks /Create`).
-
-An elevated app does not receive Explorer's “taskbar created” notification by default (UIPI), so it allows that
-message explicitly and also retries adding the tray icon for up to two minutes after start. Starting the app again
-while it is running makes the running instance show its icon and open the settings.
-
-Turning the option off deletes the task. Without it, the tray menu offers **Restart as administrator** (with a UAC prompt).
+Versions before 1.1 ran the app elevated through a Task Scheduler task. The first start of 1.1 removes that task
+(and keeps **Start with Windows** through the usual `Run` registry key).
 
 ## Releasing
 
@@ -138,8 +160,8 @@ Pushing a version tag builds the app on GitHub Actions and publishes a release w
 (`.github/workflows/release.yml`); the version is taken from the tag:
 
 ```powershell
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
 ## Files
@@ -148,21 +170,32 @@ git push origin v1.0.0
 |---|---|
 | `%AppData%\BluetoothSwitcher\settings.json` | settings (selected devices and services, timeout, language, battery threshold) |
 | `%AppData%\BluetoothSwitcher\log.txt` | log (can be opened from the tray menu) |
+| `%ProgramFiles%\Bluetooth Switcher\` | the service's copy of the app |
+| `%ProgramData%\BluetoothSwitcher\service.json` | devices the service restores |
+| `%ProgramData%\BluetoothSwitcher\service-log.txt` | service log (**Open service log** in the tray menu) |
 
 ## Project structure
 
 ```
 src/BluetoothSwitcher/
-├─ Program.cs                     — entry point, single instance
+├─ Program.cs                     — entry point: tray app, service (--service), elevated helpers
 ├─ Bluetooth/
 │  ├─ BluetoothManager.cs         — device enumeration and reconnect logic
 │  ├─ DeviceStatusMonitor.cs      — tracks ConnectionStatus for the menu
 │  ├─ NativeBluetooth.cs          — P/Invoke to bthprops.cpl (service reinstall)
+│  ├─ NativeBluetooth.Pairing.cs  — pairing without the Windows dialog
 │  ├─ BatteryReader.cs            — battery level: Windows property, BLE GATT
 │  ├─ HidBatteryReader.cs         — battery level from HID reports (incl. Apple)
 │  ├─ HidNative.cs                — shared hid.dll interop, HID collection lookup
 │  └─ Models.cs
-├─ Infrastructure/                — settings, log, autostart, elevation (scheduled task), UAC
+├─ Infrastructure/                — settings, log, autostart, UAC
+├─ Service/
+│  ├─ ServiceHost.cs              — Windows service plumbing (SCM, sign-in/unlock/wake/display events)
+│  ├─ BluetoothService.cs         — the service: commands from the tray app
+│  ├─ PairingGuard.cs             — restores keyboards, re-pairs and confirms pairing requests
+│  ├─ ServicePipe.cs              — named pipe protocol between the tray app and the service
+│  ├─ ServiceInstaller.cs         — installs to Program Files, registers / removes the service
+│  └─ PrivilegedActions.cs        — admin actions: through the service, or with UAC
 ├─ Keyboard/
 │  └─ AppleKeyboardDriver.cs      — downloads/installs Apple's keyboard driver, Fn mode
 ├─ Localization/                  — Strings*.resx (en/ru/uk), language selection

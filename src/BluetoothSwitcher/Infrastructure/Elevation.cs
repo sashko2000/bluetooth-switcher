@@ -16,39 +16,6 @@ internal static class Elevation
     }
 
     /// <summary>
-    /// Starts a new elevated instance of the application: through the scheduled task if it exists
-    /// (no UAC prompt), otherwise with "runas". Returns false if it could not be started or the UAC prompt was declined.
-    /// </summary>
-    public static bool TryRestartElevated()
-    {
-        if (ElevatedTask.Exists() && ElevatedTask.Run())
-        {
-            return true;
-        }
-
-        var path = Environment.ProcessPath;
-        if (string.IsNullOrEmpty(path))
-        {
-            return false;
-        }
-
-        try
-        {
-            Process.Start(new ProcessStartInfo(path)
-            {
-                UseShellExecute = true,
-                Verb = "runas",
-                Arguments = Program.RestartArgument,
-            });
-            return true;
-        }
-        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) // ERROR_CANCELLED
-        {
-            return false;
-        }
-    }
-
-    /// <summary>
     /// Runs a tool with administrator rights: directly if the app is already elevated, otherwise via a UAC prompt.
     /// Throws <see cref="OperationCanceledException"/> if the prompt is declined.
     /// </summary>

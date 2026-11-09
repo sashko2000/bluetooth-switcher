@@ -1,12 +1,15 @@
 namespace BluetoothSwitcher.Infrastructure;
 
-/// <summary>Simple file log at %AppData%\BluetoothSwitcher\log.txt.</summary>
+/// <summary>Simple file log: log.txt in %AppData%\BluetoothSwitcher (tray) or service-log.txt in %ProgramData%\BluetoothSwitcher (service).</summary>
 internal static class Log
 {
     private static readonly Lock Sync = new();
     private const long MaxSize = 1024 * 1024;
 
-    public static string FilePath { get; } = Path.Combine(AppPaths.DataDirectory, "log.txt");
+    public static string FilePath => AppPaths.DataDirectory == AppPaths.MachineDataDirectory ? ServiceLogPath : Path.Combine(AppPaths.DataDirectory, "log.txt");
+
+    /// <summary>The service log (readable by users, so the tray can open it).</summary>
+    public static string ServiceLogPath { get; } = Path.Combine(AppPaths.MachineDataDirectory, "service-log.txt");
 
     public static void Info(string message) => Write("INFO ", message);
 
@@ -20,13 +23,14 @@ internal static class Log
             lock (Sync)
             {
                 Directory.CreateDirectory(AppPaths.DataDirectory);
-                var file = new FileInfo(FilePath);
+                string path = FilePath;
+                var file = new FileInfo(path);
                 if (file.Exists && file.Length > MaxSize)
                 {
-                    File.Move(FilePath, FilePath + ".old", overwrite: true);
+                    File.Move(path, path + ".old", overwrite: true);
                 }
 
-                File.AppendAllText(FilePath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {level} {message}{Environment.NewLine}");
+                File.AppendAllText(path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {level} {message}{Environment.NewLine}");
             }
         }
         catch

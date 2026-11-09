@@ -114,9 +114,6 @@
   <data name="TraySettings" xml:space="preserve">
     <value>Settings…</value>
   </data>
-  <data name="TrayRestartAsAdmin" xml:space="preserve">
-    <value>Restart as administrator</value>
-  </data>
   <data name="TrayOpenLog" xml:space="preserve">
     <value>Open log</value>
   </data>
@@ -294,9 +291,6 @@
   <data name="SettingsAutoStart" xml:space="preserve">
     <value>Start with Windows</value>
   </data>
-  <data name="SettingsRunAsAdmin" xml:space="preserve">
-    <value>Run as administrator (without a UAC prompt)</value>
-  </data>
   <data name="OperationCancelled" xml:space="preserve">
     <value>cancelled</value>
   </data>
@@ -314,5 +308,56 @@
   </data>
   <data name="SettingsAutoStartFailed" xml:space="preserve">
     <value>Could not change the startup settings: {0}</value>
+  </data>
+  <data name="TrayOpenServiceLog" xml:space="preserve">
+    <value>Open service log</value>
+  </data>
+  <data name="ResultPullFailed" xml:space="preserve">
+    <value>“{0}” did not connect. Turn the keyboard off and on (or press a key) and try again.</value>
+  </data>
+  <data name="RestoreAtStartup" xml:space="preserve">
+    <value>Restore at startup and sign-in, also on the sign-in screen (keyboards and mice; if another device took it over, it is paired again without a dialog). Needs the service.</value>
+  </data>
+  <data name="ServiceGroup" xml:space="preserve">
+    <value>Background service</value>
+  </data>
+  <data name="ServiceInfo" xml:space="preserve">
+    <value>The Windows service restores the devices marked “Restore at startup and sign-in”, even before you sign in, and performs actions that need administrator rights, so the app itself runs without them. It is installed to Program Files (one administrator confirmation).</value>
+  </data>
+  <data name="ServiceInstall" xml:space="preserve">
+    <value>Install service</value>
+  </data>
+  <data name="ServiceUpdate" xml:space="preserve">
+    <value>Update service</value>
+  </data>
+  <data name="ServiceReinstall" xml:space="preserve">
+    <value>Reinstall</value>
+  </data>
+  <data name="ServiceRemove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="ServiceNotInstalled" xml:space="preserve">
+    <value>Not installed</value>
+  </data>
+  <data name="ServiceRunning" xml:space="preserve">
+    <value>Running, version {0}</value>
+  </data>
+  <data name="ServiceRunningOutdated" xml:space="preserve">
+    <value>Running an older version ({0}): update it</value>
+  </data>
+  <data name="ServiceStarting" xml:space="preserve">
+    <value>Starting…</value>
+  </data>
+  <data name="ServiceStopped" xml:space="preserve">
+    <value>Installed, but not running</value>
+  </data>
+  <data name="ServiceInstalling" xml:space="preserve">
+    <value>Installing…</value>
+  </data>
+  <data name="ServiceFailed" xml:space="preserve">
+    <value>Failed: {0}</value>
+  </data>
+  <data name="ServiceHintDeviceInfo" xml:space="preserve">
+    <value>device identification</value>
   </data>
 </root>

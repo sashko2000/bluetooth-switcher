@@ -1,6 +1,7 @@
 using BluetoothSwitcher.Bluetooth;
 using BluetoothSwitcher.Infrastructure;
 using BluetoothSwitcher.Localization;
+using BluetoothSwitcher.Service;
 
 namespace BluetoothSwitcher.UI;
 
@@ -70,9 +71,6 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _trayRetryTimer.Start();
         }
 
-        // A task created by an older version (e.g. without the logon delay) is replaced; no UAC prompt when elevated.
-        _ = ElevatedTask.EnsureUpToDateAsync();
-
         _monitor.StatusChanged += (_, _) => _ui.Post(_ =>
         {
             RebuildMenu();
@@ -83,6 +81,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         // Battery: refresh when the menu opens (at most every 30 s) and every 5 minutes for the tooltip.
         _menu.Opening += (_, _) =>
         {
+            _ = _monitor.RefreshHidAsync();
             if (DateTime.UtcNow - _batteryRefreshedAt > TimeSpan.FromSeconds(30))
             {
                 _ = RefreshBatteryAsync();
@@ -128,6 +127,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         await RefreshMonitorAsync();
         await RefreshBatteryAsync();
+        await PrivilegedActions.ConfigureServiceAsync(_settings.Devices);
     }
 
     private async Task RefreshMonitorAsync()
@@ -186,12 +186,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _menu.Items.Add(new ToolStripSeparator());
         _menu.Items.Add(new ToolStripMenuItem(Strings.TraySettings, null, (_, _) => ShowSettings()));
 
-        if (!Elevation.IsElevated)
+        _menu.Items.Add(new ToolStripMenuItem(Strings.TrayOpenLog, null, (_, _) => OpenLog(Log.FilePath)));
+        if (File.Exists(Log.ServiceLogPath))
         {
-            _menu.Items.Add(new ToolStripMenuItem(Strings.TrayRestartAsAdmin, null, (_, _) => RestartElevated()));
+            _menu.Items.Add(new ToolStripMenuItem(Strings.TrayOpenServiceLog, null, (_, _) => OpenLog(Log.ServiceLogPath)));
         }
-
-        _menu.Items.Add(new ToolStripMenuItem(Strings.TrayOpenLog, null, (_, _) => OpenLog()));
         _menu.Items.Add(new ToolStripSeparator());
         _menu.Items.Add(new ToolStripMenuItem(Strings.TrayExit, null, (_, _) => ExitThread()));
 
@@ -316,7 +315,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
         {
             Log.Info($"Reconnecting '{device.DisplayName}' ({BluetoothAddress.Format(device.Address)}, LE={device.IsLowEnergy})");
             var timeout = TimeSpan.FromSeconds(_settings.ConnectTimeoutSeconds);
-            var result = await BluetoothManager.ReconnectAsync(device, timeout);
+            var result = await PullThroughServiceAsync(device, timeout)
+                         ?? await BluetoothManager.ReconnectAsync(device, timeout);
 
             Log.Info($"Result: {result.Outcome} — {result.Message}");
             Notify(result.IsSuccess ? Strings.NotifyDone : Strings.NotifyFailed,
@@ -338,6 +338,46 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
     }
 
+    /// <summary>
+    /// A device restored by the service that does not work here: the service brings it over and, if another host
+    /// took it, pairs it again without the Windows dialog. Null if this does not apply or the service is not running.
+    /// </summary>
+    private async Task<ReconnectResult?> PullThroughServiceAsync(SavedDevice device, TimeSpan timeout)
+    {
+        if (!device.RestoreAtStartup || device.IsLowEnergy || _monitor.IsConnected(device) == true)
+        {
+            return null;
+        }
+
+        // Pairing again takes longer than a plain connection, and the keyboard may need to be woken up.
+        var duration = timeout < TimeSpan.FromSeconds(60) ? TimeSpan.FromSeconds(60) : timeout;
+        ServiceResponse? response;
+        try
+        {
+            response = await PrivilegedActions.PullAsync(device, duration, progress: null);
+        }
+        catch (Exception ex) when (ex is IOException or TimeoutException)
+        {
+            Log.Error("The service did not complete the connection", ex);
+            return null;
+        }
+
+        if (response is null)
+        {
+            return null;
+        }
+
+        Log.Info($"Service: pull '{device.DisplayName}' -> ok {response.Ok}, code {response.Code}, {response.Message}");
+        if (response.Ok)
+        {
+            return new ReconnectResult(ReconnectOutcome.Connected, Strings.ResultConnected(device.DisplayName));
+        }
+
+        return response.Code == 1168 // not configured in the service yet: fall back to the normal connection
+            ? null
+            : new ReconnectResult(ReconnectOutcome.NotConnected, Strings.ResultPullFailed(device.DisplayName));
+    }
+
     private void ShowSettings()
     {
         if (_settingsForm is { IsDisposed: false })
@@ -350,7 +390,6 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _settingsForm.FormClosed += async (_, _) =>
         {
             var result = _settingsForm.Result;
-            bool restartElevated = _settingsForm.RestartElevatedRequested;
             _settingsForm = null;
             if (result is null)
             {
@@ -369,13 +408,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
                 Notify(Strings.NotifyError, Strings.NotifySaveFailed(ex.Message), ToolTipIcon.Error, force: true);
             }
 
-            if (restartElevated)
-            {
-                RestartElevated();
-                return;
-            }
-
             RebuildMenu();
+            await PrivilegedActions.ConfigureServiceAsync(_settings.Devices);
             await RefreshMonitorAsync();
             await RefreshBatteryAsync();
         };
@@ -383,24 +417,16 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _settingsForm.Activate();
     }
 
-    private void RestartElevated()
-    {
-        if (Elevation.TryRestartElevated())
-        {
-            ExitThread();
-        }
-    }
-
-    private static void OpenLog()
+    private static void OpenLog(string path)
     {
         try
         {
-            if (!File.Exists(Log.FilePath))
+            if (!File.Exists(path))
             {
                 Log.Info("Log created");
             }
 
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Log.FilePath) { UseShellExecute = true });
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
         }
         catch (Exception ex)
         {

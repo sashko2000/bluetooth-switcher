@@ -2,6 +2,7 @@ using BluetoothSwitcher.Bluetooth;
 using BluetoothSwitcher.Infrastructure;
 using BluetoothSwitcher.Keyboard;
 using BluetoothSwitcher.Localization;
+using BluetoothSwitcher.Service;
 
 namespace BluetoothSwitcher.UI;
 
@@ -17,11 +18,11 @@ internal sealed class SettingsForm : Form
     private readonly NumericUpDown _lowBattery;
     private readonly CheckBox _notifications;
     private readonly CheckBox _autoStart;
-    private readonly CheckBox _runAsAdmin;
     private readonly ComboBox _language;
     private readonly Label _status;
 
     private readonly GroupBox _servicesGroup;
+    private readonly CheckBox _restore;
     private readonly CheckBox _autoServices;
     private readonly CheckedListBox _services;
     private readonly Label _servicesNote;
@@ -33,6 +34,11 @@ internal sealed class SettingsForm : Form
     private readonly GroupBox _appleGroup;
     private bool _updatingAppleFn;
 
+    private readonly Label _serviceInfo;
+    private readonly Label _serviceStatus;
+    private readonly Button _serviceInstall;
+    private readonly Button _serviceRemove;
+
     private bool _loaded;
     private bool _updatingServices;
     private ListViewItem? _servicesItem;
@@ -40,9 +46,6 @@ internal sealed class SettingsForm : Form
 
     /// <summary>New settings if the user clicked "Save"; otherwise null.</summary>
     public AppSettings? Result { get; private set; }
-
-    /// <summary>"Run as administrator" was just turned on in a non-elevated instance: restart through the task.</summary>
-    public bool RestartElevatedRequested { get; private set; }
 
     public SettingsForm(AppSettings settings)
     {
@@ -52,8 +55,8 @@ internal sealed class SettingsForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         AutoScaleMode = AutoScaleMode.Dpi;
         Font = SystemFonts.MessageBoxFont ?? Font;
-        MinimumSize = new Size(640, 830);
-        Size = new Size(800, 910);
+        MinimumSize = new Size(640, 800);
+        Size = new Size(800, 980);
         ShowInTaskbar = true;
         Icon = TrayIconFactory.Create();
 
@@ -90,7 +93,16 @@ internal sealed class SettingsForm : Form
         listButtons.Controls.Add(_refresh);
         listButtons.Controls.Add(_status);
 
-        // --- Services to reconnect for the selected device ---
+        // --- Restore at startup (service) and services to reconnect for the selected device ---
+        _restore = new CheckBox
+        {
+            Text = Strings.RestoreAtStartup,
+            AutoSize = true,
+            Dock = DockStyle.Top,
+            Padding = new Padding(0, 0, 0, 4),
+        };
+        _restore.CheckedChanged += (_, _) => OnRestoreEdited();
+
         _autoServices = new CheckBox
         {
             Text = Strings.ServicesAuto,
@@ -121,13 +133,14 @@ internal sealed class SettingsForm : Form
         {
             Text = Strings.ServicesGroup,
             Dock = DockStyle.Fill,
-            Height = 170,
+            Height = 200,
             Padding = new Padding(8),
             Enabled = false,
         };
         _servicesGroup.Controls.Add(_services);
         _servicesGroup.Controls.Add(_servicesNote);
         _servicesGroup.Controls.Add(_autoServices);
+        _servicesGroup.Controls.Add(_restore); // added last so that it is docked at the very top
 
         // --- General options ---
         _timeout = new NumericUpDown
@@ -145,9 +158,7 @@ internal sealed class SettingsForm : Form
             Width = 70,
         };
         _notifications = new CheckBox { Text = Strings.SettingsNotifications, AutoSize = true, Checked = settings.ShowNotifications };
-        bool taskExists = ElevatedTask.TryGetState(out bool taskAtLogon);
-        _autoStart = new CheckBox { Text = Strings.SettingsAutoStart, AutoSize = true, Checked = AutoStart.IsEnabled || taskAtLogon };
-        _runAsAdmin = new CheckBox { Text = Strings.SettingsRunAsAdmin, AutoSize = true, Checked = taskExists };
+        _autoStart = new CheckBox { Text = Strings.SettingsAutoStart, AutoSize = true, Checked = AutoStart.IsEnabled };
 
         var options = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, Padding = new Padding(0, 8, 0, 0) };
         options.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -172,13 +183,11 @@ internal sealed class SettingsForm : Form
         options.SetColumnSpan(_notifications, 2);
         options.Controls.Add(_autoStart, 0, 4);
         options.SetColumnSpan(_autoStart, 2);
-        options.Controls.Add(_runAsAdmin, 0, 5);
-        options.SetColumnSpan(_runAsAdmin, 2);
 
         // The form is shown modelessly (Show, not ShowDialog), so a button's DialogResult does not close it:
         // both buttons close the form explicitly.
         _ok = new Button { Text = Strings.SettingsSave, AutoSize = true };
-        _ok.Click += async (_, _) => await SaveAsync();
+        _ok.Click += (_, _) => Save();
         _cancel = new Button { Text = Strings.SettingsCancel, AutoSize = true };
         _cancel.Click += (_, _) => Close();
         AcceptButton = _ok;
@@ -228,21 +237,53 @@ internal sealed class SettingsForm : Form
         _appleGroup.Controls.Add(appleLayout);
         RefreshAppleDriverState();
 
+        // --- Background service ---
+        _serviceInfo = new Label { Text = Strings.ServiceInfo, AutoSize = true, Margin = new Padding(3, 3, 3, 6) };
+        _serviceInstall = new Button { Text = Strings.ServiceInstall, AutoSize = true };
+        _serviceInstall.Click += async (_, _) => await InstallServiceAsync();
+        _serviceRemove = new Button { Text = Strings.ServiceRemove, AutoSize = true };
+        _serviceRemove.Click += async (_, _) => await RemoveServiceAsync();
+        _serviceStatus = new Label { AutoSize = true, Anchor = AnchorStyles.Left, ForeColor = SystemColors.GrayText };
+
+        var serviceButtons = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
+        serviceButtons.Controls.Add(_serviceInstall);
+        serviceButtons.Controls.Add(_serviceRemove);
+
+        var serviceLayout = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2 };
+        serviceLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        serviceLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        serviceLayout.Controls.Add(_serviceInfo, 0, 0);
+        serviceLayout.SetColumnSpan(_serviceInfo, 2);
+        serviceLayout.Controls.Add(serviceButtons, 0, 1);
+        serviceLayout.Controls.Add(_serviceStatus, 1, 1);
+
+        var serviceGroup = new GroupBox
+        {
+            Text = Strings.ServiceGroup,
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Padding = new Padding(8),
+        };
+        serviceGroup.Controls.Add(serviceLayout);
+
         var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(12, 12, 12, 0) };
         // The column is pinned to the window width, otherwise long text stretches the layout past the edge.
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 170));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 200));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.Controls.Add(hint, 0, 0);
         root.Controls.Add(_list, 0, 1);
         root.Controls.Add(listButtons, 0, 2);
         root.Controls.Add(_servicesGroup, 0, 3);
-        root.Controls.Add(_appleGroup, 0, 4);
-        root.Controls.Add(options, 0, 5);
+        root.Controls.Add(serviceGroup, 0, 4);
+        root.Controls.Add(_appleGroup, 0, 5);
+        root.Controls.Add(options, 0, 6);
 
         // Wrap long labels to the window width.
         void Wrap()
@@ -252,6 +293,9 @@ internal sealed class SettingsForm : Form
             _servicesNote.MaximumSize = new Size(Math.Max(100, width - 20), 0);
             _appleInfo.MaximumSize = new Size(Math.Max(100, width - 20), 0);
             _appleStatus.MaximumSize = new Size(Math.Max(100, width - 260), 0);
+            _serviceInfo.MaximumSize = new Size(Math.Max(100, width - 20), 0);
+            _serviceStatus.MaximumSize = new Size(Math.Max(100, width - 320), 0);
+            _restore.MaximumSize = new Size(Math.Max(100, width - 20), 0);
         }
         root.SizeChanged += (_, _) => Wrap();
 
@@ -263,6 +307,7 @@ internal sealed class SettingsForm : Form
     protected override async void OnShown(EventArgs e)
     {
         base.OnShown(e);
+        await RefreshServiceStateAsync();
         await LoadDevicesAsync();
     }
 
@@ -357,6 +402,11 @@ internal sealed class SettingsForm : Form
     {
         public override string ToString()
         {
+            if (NativeBluetooth.IsInformational(Id))
+            {
+                return $"{NativeBluetooth.Describe(Id)} ({Strings.ServiceHintDeviceInfo})";
+            }
+
             if (!NativeBluetooth.IsKnown(Id))
             {
                 return Strings.ServiceVendor(Id);
@@ -439,6 +489,7 @@ internal sealed class SettingsForm : Form
             }
 
             _autoServices.Checked = auto;
+            _restore.Checked = saved.RestoreAtStartup;
             _services.Enabled = !auto;
             _servicesGroup.Enabled = true;
             _servicesItem = item;
@@ -457,6 +508,7 @@ internal sealed class SettingsForm : Form
             _servicesGroup.Text = title;
             _services.Items.Clear();
             _autoServices.Checked = true;
+            _restore.Checked = false;
             _servicesGroup.Enabled = enabled;
         }
         finally
@@ -504,6 +556,108 @@ internal sealed class SettingsForm : Form
         }
     }
 
+    private void OnRestoreEdited()
+    {
+        if (_updatingServices || _servicesItem is null || _servicesItem.ListView is null)
+        {
+            return;
+        }
+
+        var saved = (SavedDevice)_servicesItem.Tag!;
+        _servicesItem.Tag = saved with { RestoreAtStartup = _restore.Checked };
+        if (_restore.Checked)
+        {
+            _servicesItem.Checked = true; // restoring a device implies showing it in the menu
+        }
+    }
+
+    private async Task RefreshServiceStateAsync(string? status = null)
+    {
+        var state = await Task.Run(ServiceInstaller.GetState);
+        string? version = state == ServiceState.Running ? await PrivilegedActions.GetServiceVersionAsync() : null;
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        bool outdated = version is not null && version != AppInfo.Version;
+        _serviceInstall.Text = state == ServiceState.NotInstalled ? Strings.ServiceInstall
+            : outdated ? Strings.ServiceUpdate
+            : Strings.ServiceReinstall;
+        _serviceRemove.Enabled = state != ServiceState.NotInstalled;
+        _serviceInstall.Enabled = true;
+        _serviceStatus.Text = status ?? state switch
+        {
+            ServiceState.NotInstalled => Strings.ServiceNotInstalled,
+            ServiceState.Running when outdated => Strings.ServiceRunningOutdated(version),
+            ServiceState.Running => Strings.ServiceRunning(version ?? "?"),
+            ServiceState.Starting => Strings.ServiceStarting,
+            _ => Strings.ServiceStopped,
+        };
+    }
+
+    private async Task InstallServiceAsync()
+    {
+        _serviceInstall.Enabled = false;
+        _serviceRemove.Enabled = false;
+        _serviceStatus.Text = Strings.ServiceInstalling;
+        string? status = null;
+        try
+        {
+            await ServiceInstaller.InstallAsync();
+            // Give the service a moment to open its pipe, then tell it which devices to restore.
+            for (int i = 0; i < 20 && await PrivilegedActions.GetServiceVersionAsync() is null; i++)
+            {
+                await Task.Delay(500);
+            }
+
+            await PrivilegedActions.ConfigureServiceAsync(CurrentDevices());
+        }
+        catch (OperationCanceledException)
+        {
+            status = Strings.OperationCancelled;
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Service installation failed", ex);
+            status = Strings.ServiceFailed(ex.Message);
+        }
+
+        if (!IsDisposed)
+        {
+            await RefreshServiceStateAsync(status);
+        }
+    }
+
+    private async Task RemoveServiceAsync()
+    {
+        _serviceInstall.Enabled = false;
+        _serviceRemove.Enabled = false;
+        string? status = null;
+        try
+        {
+            await ServiceInstaller.UninstallAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            status = Strings.OperationCancelled;
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Service removal failed", ex);
+            status = Strings.ServiceFailed(ex.Message);
+        }
+
+        if (!IsDisposed)
+        {
+            await RefreshServiceStateAsync(status);
+        }
+    }
+
+    private List<SavedDevice> CurrentDevices() => _loaded
+        ? _list.Items.Cast<ListViewItem>().Where(i => i.Checked).Select(i => (SavedDevice)i.Tag!).ToList()
+        : _settings.Devices;
+
     private void RefreshAppleDriverState(string? status = null)
     {
         bool installed = AppleKeyboardDriver.IsInstalled;
@@ -538,7 +692,7 @@ internal sealed class SettingsForm : Form
         string status;
         try
         {
-            var result = await AppleKeyboardDriver.InstallAsync(progress);
+            var result = await PrivilegedActions.InstallAppleDriverAsync(progress);
             status = result switch
             {
                 AppleKeyboardDriver.InstallResult.InstalledRebootRequired => Strings.AppleDriverInstallReboot,
@@ -578,7 +732,7 @@ internal sealed class SettingsForm : Form
         string status;
         try
         {
-            bool restarted = await AppleKeyboardDriver.SetMediaKeysByDefaultAsync(media);
+            bool restarted = await PrivilegedActions.SetAppleMediaKeysByDefaultAsync(media);
             Log.Info($"Apple keyboard: media keys by default = {media}, keyboard restarted = {restarted}");
             status = restarted ? Strings.AppleFnAppliedNow : Strings.AppleFnApplied;
         }
@@ -598,78 +752,32 @@ internal sealed class SettingsForm : Form
         }
     }
 
-    private async Task SaveAsync()
+    private void Save()
     {
-        _ok.Enabled = false;
-        _cancel.Enabled = false;
         try
         {
-            await ApplyStartupAsync(_autoStart.Checked, _runAsAdmin.Checked);
+            if (AutoStart.IsEnabled != _autoStart.Checked)
+            {
+                AutoStart.Set(_autoStart.Checked);
+            }
         }
         catch (Exception ex)
         {
             // Keep the window open so the user can change the choice or try again.
-            if (ex is not OperationCanceledException)
-            {
-                Log.Error("Failed to change startup settings", ex);
-            }
-
-            string reason = ex is OperationCanceledException ? Strings.OperationCancelled : ex.Message;
-            MessageBox.Show(this, Strings.SettingsAutoStartFailed(reason), Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            _ok.Enabled = true;
-            _cancel.Enabled = true;
+            Log.Error("Failed to change autostart", ex);
+            MessageBox.Show(this, Strings.SettingsAutoStartFailed(ex.Message), Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
-        var devices = _loaded
-            ? _list.Items.Cast<ListViewItem>().Where(i => i.Checked).Select(i => (SavedDevice)i.Tag!).ToList()
-            : _settings.Devices;
-
         Result = new AppSettings
         {
-            Devices = devices,
+            Devices = CurrentDevices(),
             ConnectTimeoutSeconds = (int)_timeout.Value,
             ShowNotifications = _notifications.Checked,
             LowBatteryThreshold = (int)_lowBattery.Value,
             Language = (_language.SelectedItem as LanguageItem)?.Code ?? "",
         };
 
-        RestartElevatedRequested = _runAsAdmin.Checked && !Elevation.IsElevated;
         Close();
-    }
-
-    /// <summary>
-    /// Start with Windows / run as administrator:
-    /// - as administrator: a scheduled task (with a logon trigger if autostart is on), no Run key;
-    /// - otherwise: no task, and the HKCU Run key for autostart.
-    /// Creating or deleting the task asks for administrator rights once.
-    /// </summary>
-    private static async Task ApplyStartupAsync(bool startWithWindows, bool runAsAdmin)
-    {
-        bool taskExists = ElevatedTask.TryGetState(out bool taskAtLogon);
-        if (runAsAdmin)
-        {
-            if (!taskExists || taskAtLogon != startWithWindows)
-            {
-                await ElevatedTask.CreateAsync(startWithWindows);
-            }
-
-            if (AutoStart.IsEnabled)
-            {
-                AutoStart.Set(false); // the task starts the app; avoid a second, non-elevated start
-            }
-        }
-        else
-        {
-            if (taskExists)
-            {
-                await ElevatedTask.DeleteAsync();
-            }
-
-            if (AutoStart.IsEnabled != startWithWindows)
-            {
-                AutoStart.Set(startWithWindows);
-            }
-        }
     }
 }

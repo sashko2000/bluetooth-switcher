@@ -15,6 +15,12 @@ public sealed record SavedDevice
     /// </summary>
     public List<Guid>? Services { get; init; }
 
+    /// <summary>
+    /// Restore at startup and sign-in (Classic keyboards): the service reconnects the device and, if another host
+    /// took it over, pairs it again without the Windows dialog.
+    /// </summary>
+    public bool RestoreAtStartup { get; init; }
+
     [JsonIgnore]
     public string Key => MakeKey(Address, IsLowEnergy);
 

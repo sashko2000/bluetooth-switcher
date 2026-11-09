@@ -48,7 +48,6 @@ internal static class Strings
     public static string AppleFnApplied => Get(nameof(AppleFnApplied));
     public static string TrayConnectTooltip => Get(nameof(TrayConnectTooltip));
     public static string TraySettings => Get(nameof(TraySettings));
-    public static string TrayRestartAsAdmin => Get(nameof(TrayRestartAsAdmin));
     public static string TrayOpenLog => Get(nameof(TrayOpenLog));
     public static string TrayExit => Get(nameof(TrayExit));
     public static string TrayTooltipBusy(object? arg0) => Format(nameof(TrayTooltipBusy), arg0);
@@ -108,11 +107,27 @@ internal static class Strings
     public static string SettingsTimeout => Get(nameof(SettingsTimeout));
     public static string SettingsNotifications => Get(nameof(SettingsNotifications));
     public static string SettingsAutoStart => Get(nameof(SettingsAutoStart));
-    public static string SettingsRunAsAdmin => Get(nameof(SettingsRunAsAdmin));
     public static string OperationCancelled => Get(nameof(OperationCancelled));
     public static string SettingsLanguage => Get(nameof(SettingsLanguage));
     public static string SettingsLanguageSystem => Get(nameof(SettingsLanguageSystem));
     public static string SettingsSave => Get(nameof(SettingsSave));
     public static string SettingsCancel => Get(nameof(SettingsCancel));
     public static string SettingsAutoStartFailed(object? arg0) => Format(nameof(SettingsAutoStartFailed), arg0);
+    public static string TrayOpenServiceLog => Get(nameof(TrayOpenServiceLog));
+    public static string ResultPullFailed(object? arg0) => Format(nameof(ResultPullFailed), arg0);
+    public static string RestoreAtStartup => Get(nameof(RestoreAtStartup));
+    public static string ServiceGroup => Get(nameof(ServiceGroup));
+    public static string ServiceInfo => Get(nameof(ServiceInfo));
+    public static string ServiceInstall => Get(nameof(ServiceInstall));
+    public static string ServiceUpdate => Get(nameof(ServiceUpdate));
+    public static string ServiceReinstall => Get(nameof(ServiceReinstall));
+    public static string ServiceRemove => Get(nameof(ServiceRemove));
+    public static string ServiceNotInstalled => Get(nameof(ServiceNotInstalled));
+    public static string ServiceRunning(object? arg0) => Format(nameof(ServiceRunning), arg0);
+    public static string ServiceRunningOutdated(object? arg0) => Format(nameof(ServiceRunningOutdated), arg0);
+    public static string ServiceStarting => Get(nameof(ServiceStarting));
+    public static string ServiceStopped => Get(nameof(ServiceStopped));
+    public static string ServiceInstalling => Get(nameof(ServiceInstalling));
+    public static string ServiceFailed(object? arg0) => Format(nameof(ServiceFailed), arg0);
+    public static string ServiceHintDeviceInfo => Get(nameof(ServiceHintDeviceInfo));
 }

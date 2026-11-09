@@ -114,9 +114,6 @@
   <data name="TraySettings" xml:space="preserve">
     <value>Налаштування…</value>
   </data>
-  <data name="TrayRestartAsAdmin" xml:space="preserve">
-    <value>Перезапустити від імені адміністратора</value>
-  </data>
   <data name="TrayOpenLog" xml:space="preserve">
     <value>Відкрити журнал</value>
   </data>
@@ -294,9 +291,6 @@
   <data name="SettingsAutoStart" xml:space="preserve">
     <value>Запускати разом із Windows</value>
   </data>
-  <data name="SettingsRunAsAdmin" xml:space="preserve">
-    <value>Запускати від імені адміністратора (без запиту UAC)</value>
-  </data>
   <data name="OperationCancelled" xml:space="preserve">
     <value>скасовано</value>
   </data>
@@ -314,5 +308,56 @@
   </data>
   <data name="SettingsAutoStartFailed" xml:space="preserve">
     <value>Не вдалося змінити параметри запуску: {0}</value>
+  </data>
+  <data name="TrayOpenServiceLog" xml:space="preserve">
+    <value>Відкрити лог служби</value>
+  </data>
+  <data name="ResultPullFailed" xml:space="preserve">
+    <value>«{0}» не підключився. Вимкніть і ввімкніть клавіатуру (або натисніть клавішу) і спробуйте ще раз.</value>
+  </data>
+  <data name="RestoreAtStartup" xml:space="preserve">
+    <value>Відновлювати під час завантаження та входу, зокрема на екрані входу (клавіатури й миші; якщо пристрій забрав інший хост, пару буде створено заново без діалогу). Потрібна служба.</value>
+  </data>
+  <data name="ServiceGroup" xml:space="preserve">
+    <value>Фонова служба</value>
+  </data>
+  <data name="ServiceInfo" xml:space="preserve">
+    <value>Служба Windows відновлює пристрої з позначкою «Відновлювати під час завантаження та входу», ще до входу в систему, і виконує дії, яким потрібні права адміністратора, тому сама програма працює без них. Встановлюється в Program Files (одне підтвердження адміністратора).</value>
+  </data>
+  <data name="ServiceInstall" xml:space="preserve">
+    <value>Встановити службу</value>
+  </data>
+  <data name="ServiceUpdate" xml:space="preserve">
+    <value>Оновити службу</value>
+  </data>
+  <data name="ServiceReinstall" xml:space="preserve">
+    <value>Перевстановити</value>
+  </data>
+  <data name="ServiceRemove" xml:space="preserve">
+    <value>Видалити</value>
+  </data>
+  <data name="ServiceNotInstalled" xml:space="preserve">
+    <value>Не встановлена</value>
+  </data>
+  <data name="ServiceRunning" xml:space="preserve">
+    <value>Працює, версія {0}</value>
+  </data>
+  <data name="ServiceRunningOutdated" xml:space="preserve">
+    <value>Працює стара версія ({0}): оновіть її</value>
+  </data>
+  <data name="ServiceStarting" xml:space="preserve">
+    <value>Запускається…</value>
+  </data>
+  <data name="ServiceStopped" xml:space="preserve">
+    <value>Встановлена, але не працює</value>
+  </data>
+  <data name="ServiceInstalling" xml:space="preserve">
+    <value>Встановлюється…</value>
+  </data>
+  <data name="ServiceFailed" xml:space="preserve">
+    <value>Помилка: {0}</value>
+  </data>
+  <data name="ServiceHintDeviceInfo" xml:space="preserve">
+    <value>ідентифікація пристрою</value>
   </data>
 </root>

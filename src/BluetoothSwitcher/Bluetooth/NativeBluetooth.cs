@@ -9,7 +9,7 @@ namespace BluetoothSwitcher.Bluetooth;
 /// "Disconnect → Connect" in Windows Settings: profile drivers are reinstalled and the stack
 /// initiates the connection by itself.
 /// </summary>
-internal static class NativeBluetooth
+internal static partial class NativeBluetooth
 {
     public const int ErrorSuccess = 0;
     public const int ErrorAccessDenied = 5;
@@ -42,10 +42,23 @@ internal static class NativeBluetooth
         [new Guid("00001101-0000-1000-8000-00805F9B34FB")] = "Serial Port",
     };
 
+    /// <summary>
+    /// Services that only describe the device (no profile driver). Named in the UI, but never reinstalled
+    /// automatically: toggling them takes time and does not help the connection.
+    /// </summary>
+    private static readonly Dictionary<Guid, string> InformationalServices = new()
+    {
+        [new Guid("00001200-0000-1000-8000-00805F9B34FB")] = "PnP Information",
+    };
+
     public static bool IsKnown(Guid service) => KnownServices.ContainsKey(service);
 
+    public static bool IsInformational(Guid service) => InformationalServices.ContainsKey(service);
+
     public static string Describe(Guid service) =>
-        KnownServices.TryGetValue(service, out var name) ? name : service.ToString();
+        KnownServices.TryGetValue(service, out var name) ? name
+        : InformationalServices.TryGetValue(service, out name) ? name
+        : service.ToString();
 
     /// <summary>
     /// Services reconnected in "Automatic" mode.
@@ -71,7 +84,8 @@ internal static class NativeBluetooth
             return known;
         }
 
-        return installed.Count > 0 ? installed.ToArray() : [HidServiceClass];
+        var other = installed.Where(g => !IsInformational(g)).ToArray();
+        return other.Length > 0 ? other : [HidServiceClass];
     }
 
     /// <summary>
@@ -86,7 +100,8 @@ internal static class NativeBluetooth
             return known;
         }
 
-        return installed.Count > 0 ? installed.ToArray() : [HidServiceClass];
+        var other = installed.Where(g => !IsInformational(g)).ToArray();
+        return other.Length > 0 ? other : [HidServiceClass];
     }
 
     /// <summary>Installed (enabled) services of the device, or null if the device was not found.</summary>
