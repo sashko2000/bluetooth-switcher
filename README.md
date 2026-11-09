@@ -1,13 +1,18 @@
 # Bluetooth Switcher
 
-A Windows tray app that connects or reconnects selected Bluetooth devices in one click:
+**Apple Magic Keyboard on Windows, done right.** A small tray app for people who share one Magic Keyboard between a
+Windows PC and a Mac, an iPad, a phone or another PC:
 
-- **switches a multi-host keyboard** to the current computer — no need to turn on the other computer
-  or press the channel button on the keyboard;
-- **disconnects and reconnects a speaker or headphones**, e.g. to bring the microphone (Hands-Free) back;
-- **shows the battery level** of connected devices and warns when it runs low;
-- with the optional **background service**, **brings a keyboard back at startup and sign-in** — even on the
-  Windows sign-in screen — and pairs it again without a dialog if another device (a phone, another PC) took it over.
+- **pulls the keyboard to this PC in one click** — no need to turn off Bluetooth on the other device;
+- **makes it type on the Windows sign-in screen**, even right after another device used it: Magic Keyboard keeps the
+  pairing key of only one host, and the optional background service pairs it again without the Windows dialog;
+- **installs Apple's keyboard driver** for the Fn key (Fn+Backspace = Delete, media keys) and lets you choose whether
+  the top row sends F1–F12 or media keys by default;
+- **shows the battery level** of the keyboard in the tray and warns when it runs low.
+
+It also works with other Bluetooth devices: it switches other multi-host keyboards and reconnects speakers or
+headphones (e.g. to bring the microphone back). Tested with Apple Magic Keyboard A2450 (2021); the Fn driver supports
+Magic Keyboard 2015–2021.
 
 ## Download
 
@@ -15,37 +20,23 @@ Get the latest `BluetoothSwitcher-<version>-win-x64.zip` from the
 [Releases](../../releases) page, unzip it and run `BluetoothSwitcher.exe` (no installation and no .NET runtime
 needed). The app is not code-signed, so Windows SmartScreen may warn on the first start: **More info → Run anyway**.
 
-## How it works
+## Quick start with Magic Keyboard
 
-1. In **Settings**, check any paired devices (the list comes from Windows: Classic and BLE).
-2. Each of them gets an item in the tray icon menu:
-   - **Connect “Name”** if the device is not connected to this PC;
-   - **Reconnect “Name”** with a check mark if it is connected.
+1. Pair the keyboard with Windows once (Settings → Bluetooth & devices → Add device; turn the keyboard off and on
+   to make it visible).
+2. Start `BluetoothSwitcher.exe`, open **Settings** from the tray icon and check **Magic Keyboard**.
+3. Check **Restore at startup and sign-in** and click **Install service** (one administrator confirmation).
+4. Optionally, in **Apple Magic Keyboard**, click **Install driver** and choose the **top row** behavior.
+5. Click **Save**.
 
-   If only one device is selected, double-clicking the tray icon does the same.
-3. When you click the item:
-   - **Classic (BR/EDR), not connected**:
-     1. An uncached SDP query makes the adapter page the device.
-     2. If that is not enough, the device's standard profiles are reinstalled
-        (`BluetoothSetServiceState` disable → enable), and Windows initiates the connection again.
-   - **Classic, already connected**: only the services selected for the device are reinstalled
-     (by default HID for keyboards/mice and Hands-Free for audio devices). This is the same as
-     “Disconnect → Connect” in Windows Settings. Each service takes about 3 seconds.
-   - **BLE**: `GattSession.MaintainConnection = true` plus an uncached GATT query.
-     The public Windows API offers no way to force-disconnect an active BLE connection.
-4. The app waits until the connection has held steadily for a few seconds and shows a notification.
+From then on:
 
-> ⚠️ The result depends on the device firmware. Many keyboards (Logitech MX Keys/K380/K780, Keychron,
-> Microsoft, Apple Magic Keyboard, etc.) accept an incoming connection from a host paired on another
-> channel and switch over by themselves. Some only listen on the active channel; those cannot be
-> switched from software at all. Speakers that support only one connection at a time may also refuse
-> until they are disconnected from the other computer.
+- to use the keyboard here after another device, click **Connect “Magic Keyboard”** in the tray menu (or double-click
+  the icon) and press a key on the keyboard — or turn it off and on;
+- after a restart, or when the PC is locked, just turn the keyboard off and on (or press a key): it types within
+  about a minute, no dialog, even before you sign in.
 
-Without the service, the app does not pair devices: it works with devices that are already paired with Windows.
-For keyboards marked **Restore at startup and sign-in**, the service also handles the case where another host
-took the keyboard over (see below), and the tray's **Connect** goes through the service.
-
-## Background service: keyboard at startup and sign-in
+## Sign-in screen and switching back: the background service
 
 Some multi-host keyboards — Apple Magic Keyboard in particular — keep the pairing key of only one host. After the
 keyboard was used with a phone or another computer, it rejects this PC until it is paired again, and Windows asks
@@ -73,20 +64,7 @@ the Apple keyboard driver), so the app itself runs without them. It is installed
 `%ProgramFiles%\Bluetooth Switcher` and runs as LocalSystem: a service must not start an executable that a normal user
 could replace. After updating the app, use **Update service** in the settings. Tested with Apple Magic Keyboard (A2450).
 
-## Battery level
-
-If a connected device reports its battery level, it is shown in the menu item
-(“Reconnect “SRS-XB100” — battery 80%”) and in the tray icon tooltip. Sources, in order:
-
-1. The value Windows shows in Settings → Bluetooth & devices (Hands-Free speakers and headsets, many BLE devices).
-2. The standard GATT Battery Service for BLE devices.
-3. The device's HID reports: standard Battery Strength / Absolute State Of Charge usages and Apple's
-   report `0x90` — this is how the battery of Apple Magic Keyboard is read (other Apple Bluetooth devices
-   that use the same report should work too, but have not been tested).
-
-When the level drops to the configured threshold (15% by default, 0 turns it off), a notification is shown.
-
-## Apple Magic Keyboard: Fn key and top row
+## Fn key and top row
 
 On its own, Windows ignores the Fn key of Apple keyboards, so Fn+Backspace (Delete) and the media keys on the
 top row do not work. Apple's Boot Camp keyboard driver fixes that, and the app can install it for you:
@@ -103,6 +81,50 @@ top row do not work. Apple's Boot Camp keyboard driver fixes that, and the app c
 - The lock key (top right on 2021 models) is not handled by the driver.
 - To remove the driver: Device Manager → the keyboard (“Apple Keyboard”) → Uninstall device → check
   “Attempt to remove the driver for this device”, then reconnect the keyboard.
+
+## Battery level
+
+If a connected device reports its battery level, it is shown in the menu item
+(“Reconnect “SRS-XB100” — battery 80%”) and in the tray icon tooltip. Sources, in order:
+
+1. The value Windows shows in Settings → Bluetooth & devices (Hands-Free speakers and headsets, many BLE devices).
+2. The standard GATT Battery Service for BLE devices.
+3. The device's HID reports: standard Battery Strength / Absolute State Of Charge usages and Apple's
+   report `0x90` — this is how the battery of Apple Magic Keyboard is read (other Apple Bluetooth devices
+   that use the same report should work too, but have not been tested).
+
+When the level drops to the configured threshold (15% by default, 0 turns it off), a notification is shown.
+
+## Other devices and how connecting works
+
+1. In **Settings**, check any paired devices (the list comes from Windows: Classic and BLE): other multi-host
+   keyboards, speakers, headphones, mice.
+2. Each of them gets an item in the tray icon menu:
+   - **Connect “Name”** if the device is not connected to this PC;
+   - **Reconnect “Name”** with a check mark if it is connected.
+
+   If only one device is selected, double-clicking the tray icon does the same.
+3. When you click the item:
+   - **Classic (BR/EDR), not connected**:
+     1. An uncached SDP query makes the adapter page the device.
+     2. If that is not enough, the device's standard profiles are reinstalled
+        (`BluetoothSetServiceState` disable → enable), and Windows initiates the connection again.
+   - **Classic, already connected**: only the services selected for the device are reinstalled
+     (by default HID for keyboards/mice and Hands-Free for audio devices). This is the same as
+     “Disconnect → Connect” in Windows Settings. Each service takes about 3 seconds.
+   - **BLE**: `GattSession.MaintainConnection = true` plus an uncached GATT query.
+     The public Windows API offers no way to force-disconnect an active BLE connection.
+4. The app waits until the connection has held steadily for a few seconds and shows a notification.
+
+> ⚠️ The result depends on the device firmware. Many keyboards (Logitech MX Keys/K380/K780, Keychron,
+> Microsoft, Apple Magic Keyboard, etc.) accept an incoming connection from a host paired on another
+> channel and switch over by themselves. Some only listen on the active channel; those cannot be
+> switched from software at all. Speakers that support only one connection at a time may also refuse
+> until they are disconnected from the other computer.
+
+Without the service, the app does not pair devices: it works with devices that are already paired with Windows.
+For keyboards marked **Restore at startup and sign-in**, the service also handles the case where another host
+took the keyboard over (see above), and the tray's **Connect** goes through the service.
 
 ## Settings
 
