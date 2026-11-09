@@ -60,10 +60,21 @@ internal static partial class NativeBluetooth
         : InformationalServices.TryGetValue(service, out name) ? name
         : service.ToString();
 
+    public static readonly Guid AvrcpTargetServiceClass = new("0000110C-0000-1000-8000-00805F9B34FB");
+
+    /// <summary>Profiles of a speaker or headset that are reconnected together.</summary>
+    private static readonly Guid[] AudioServices =
+        [A2dpSinkServiceClass, HandsFreeServiceClass, HeadsetServiceClass, AvrcpServiceClass, AvrcpTargetServiceClass];
+
+    /// <summary>The device has a microphone profile (Hands-Free or Headset).</summary>
+    public static bool HasMicrophoneProfile(IEnumerable<Guid> services) =>
+        services.Any(g => g == HandsFreeServiceClass || g == HeadsetServiceClass);
+
     /// <summary>
-    /// Services reconnected in "Automatic" mode.
-    /// Each BluetoothSetServiceState call takes about 3 seconds, so touch as few as possible:
-    /// keyboard/mouse — HID only, speaker/headset — Hands-Free/Headset only (microphone).
+    /// Services reconnected in "Automatic" mode. Each BluetoothSetServiceState call takes about 3 seconds:
+    /// - keyboard/mouse: HID only;
+    /// - speaker/headset: all audio profiles. Re-enabling only Hands-Free while A2DP keeps the device connected
+    ///   often does not bring the microphone back; a full disconnect makes the device set up all profiles again.
     /// </summary>
     public static Guid[] DefaultServices(IReadOnlyCollection<Guid> installed)
     {
@@ -72,10 +83,9 @@ internal static partial class NativeBluetooth
             return [HidServiceClass];
         }
 
-        var microphone = installed.Where(g => g == HandsFreeServiceClass || g == HeadsetServiceClass).ToArray();
-        if (microphone.Length > 0)
+        if (HasMicrophoneProfile(installed))
         {
-            return microphone;
+            return AudioServices.Where(installed.Contains).ToArray();
         }
 
         var known = installed.Where(IsKnown).ToArray();

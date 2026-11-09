@@ -50,6 +50,8 @@ public enum ReconnectOutcome
     Connected,
     AlreadyConnected,
     NotConnected,
+    /// <summary>A speaker or headset is connected, but its microphone (Hands-Free) did not come back.</summary>
+    NoMicrophone,
     DeviceNotFound,
     AccessDenied,
     Failed,

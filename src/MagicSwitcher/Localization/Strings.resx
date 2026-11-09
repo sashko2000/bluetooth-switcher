@@ -262,10 +262,10 @@
     <value>Services to reconnect: {0} — device not found</value>
   </data>
   <data name="ServicesAuto" xml:space="preserve">
-    <value>Automatic (keyboard/mouse — HID, speaker/headphones — Hands-Free)</value>
+    <value>Automatic (keyboard/mouse — HID, speaker/headphones — all audio profiles)</value>
   </data>
   <data name="ServicesNote" xml:space="preserve">
-    <value>Each service takes about 3 s to reconnect. To restore a speaker’s microphone, Hands-Free is usually enough.</value>
+    <value>Each service takes about 3 s to reconnect. For a speaker or headset, all audio profiles are reconnected: the microphone (Hands-Free) often comes back only after a full reconnect. After reconnecting, the app checks that the microphone is there.</value>
   </data>
   <data name="ServiceVendor" xml:space="preserve">
     <value>{0} (vendor-specific)</value>
@@ -362,5 +362,8 @@
   </data>
   <data name="RestoreAtStartupNote" xml:space="preserve">
     <value>Also on the Windows sign-in screen. If another device took it over, it is paired again without a dialog. Needs the background service.</value>
+  </data>
+  <data name="ResultNoMicrophone" xml:space="preserve">
+    <value>“{0}” is connected, but its microphone did not come back. Try again, or turn the device off and on.</value>
   </data>
 </root>

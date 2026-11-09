@@ -262,10 +262,10 @@
     <value>Сервисы для переподключения: {0} — устройство не найдено</value>
   </data>
   <data name="ServicesAuto" xml:space="preserve">
-    <value>Автоматически (клавиатура/мышь — HID, колонка/наушники — Hands-Free)</value>
+    <value>Автоматически (клавиатура/мышь — HID, колонка/наушники — все аудиопрофили)</value>
   </data>
   <data name="ServicesNote" xml:space="preserve">
-    <value>Каждый сервис переподключается ≈ 3 с. Чтобы вернуть микрофон колонки, обычно достаточно Hands-Free.</value>
+    <value>Каждый сервис переподключается ≈ 3 с. У колонки или гарнитуры переподключаются все аудиопрофили: микрофон (Hands-Free) часто возвращается только после полного переподключения. После переподключения программа проверяет, что микрофон появился.</value>
   </data>
   <data name="ServiceVendor" xml:space="preserve">
     <value>{0} (служебный)</value>
@@ -362,5 +362,8 @@
   </data>
   <data name="RestoreAtStartupNote" xml:space="preserve">
     <value>В том числе на экране входа Windows. Если устройство забрал другой хост, пара создаётся заново без диалога. Нужна фоновая служба.</value>
+  </data>
+  <data name="ResultNoMicrophone" xml:space="preserve">
+    <value>«{0}» подключено, но микрофон не вернулся. Попробуйте ещё раз или выключите и включите устройство.</value>
   </data>
 </root>

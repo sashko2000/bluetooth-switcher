@@ -112,6 +112,39 @@ public static class BluetoothManager
 
     private static async Task<ReconnectResult> ReconnectClassicAsync(SavedDevice saved, TimeSpan timeout, CancellationToken ct)
     {
+        var installed = await Task.Run(() => NativeBluetooth.TryGetInstalledServices(saved.Address), ct);
+        bool checkMicrophone = installed is not null && NativeBluetooth.HasMicrophoneProfile(installed)
+                               && (saved.Services is null || NativeBluetooth.HasMicrophoneProfile(saved.Services));
+
+        var result = await ConnectClassicAsync(saved, timeout, ct);
+        if (!checkMicrophone || !result.IsSuccess)
+        {
+            return result;
+        }
+
+        // A speaker or headset may come back with audio only. The connection check above does not notice that,
+        // so make sure the microphone (Hands-Free capture endpoint) is there too.
+        if (await AudioEndpoints.WaitForMicrophoneAsync(saved, TimeSpan.FromSeconds(10), ct) != false)
+        {
+            return result;
+        }
+
+        var audio = NativeBluetooth.DefaultServices(installed!).Union(saved.Services ?? []).ToList();
+        Log.Info($"[{saved.DisplayName}] connected without a microphone: reconnecting all audio profiles");
+        int error = await PrivilegedActions.ReinstallServicesAsync(saved.Address, audio, full: false, ct);
+        Log.Info($"[{saved.DisplayName}] audio profiles reinstalled -> {error}");
+        if (error == NativeBluetooth.ErrorSuccess
+            && await AudioEndpoints.WaitForMicrophoneAsync(saved, TimeSpan.FromSeconds(20), ct) != false)
+        {
+            return Reconnected(saved);
+        }
+
+        Log.Info($"[{saved.DisplayName}] the microphone did not come back");
+        return new(ReconnectOutcome.NoMicrophone, Strings.ResultNoMicrophone(saved.DisplayName));
+    }
+
+    private static async Task<ReconnectResult> ConnectClassicAsync(SavedDevice saved, TimeSpan timeout, CancellationToken ct)
+    {
         using var device = await BluetoothDevice.FromBluetoothAddressAsync(saved.Address).AsTask(ct);
         if (device is null)
         {

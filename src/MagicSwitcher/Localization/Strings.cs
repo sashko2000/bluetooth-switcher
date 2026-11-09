@@ -131,4 +131,5 @@ internal static class Strings
     public static string ServiceFailed(object? arg0) => Format(nameof(ServiceFailed), arg0);
     public static string ServiceHintDeviceInfo => Get(nameof(ServiceHintDeviceInfo));
     public static string RestoreAtStartupNote => Get(nameof(RestoreAtStartupNote));
+    public static string ResultNoMicrophone(object? arg0) => Format(nameof(ResultNoMicrophone), arg0);
 }

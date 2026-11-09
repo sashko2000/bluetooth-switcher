@@ -123,11 +123,15 @@ When the level drops to the configured threshold (15% by default, 0 turns it off
      2. If that is not enough, the device's standard profiles are reinstalled
         (`BluetoothSetServiceState` disable → enable), and Windows initiates the connection again.
    - **Classic, already connected**: only the services selected for the device are reinstalled
-     (by default HID for keyboards/mice and Hands-Free for audio devices). This is the same as
-     “Disconnect → Connect” in Windows Settings. Each service takes about 3 seconds.
+     (by default HID for keyboards/mice and all audio profiles — A2DP, Hands-Free, Headset, AVRCP — for speakers
+     and headsets: re-enabling only Hands-Free while A2DP keeps the device connected often does not bring the
+     microphone back). This is the same as “Disconnect → Connect” in Windows Settings. Each service takes about 3 seconds.
    - **BLE**: `GattSession.MaintainConnection = true` plus an uncached GATT query.
      The public Windows API offers no way to force-disconnect an active BLE connection.
 4. The app waits until the connection has held steadily for a few seconds and shows a notification.
+   For a speaker or headset it also checks that the microphone (the Hands-Free capture endpoint) is back; if the device
+   came back with audio only, all audio profiles are reconnected once more, and if the microphone is still missing,
+   the notification says so.
 
 > ⚠️ The result depends on the device firmware. Many multi-channel keyboards (Logitech MX Keys/K380/K780, Keychron,
 > Microsoft, etc.) accept an incoming connection from a host paired on another channel and switch over by themselves.
