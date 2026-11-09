@@ -316,7 +316,7 @@
     <value>«{0}» не підключився. Вимкніть і ввімкніть клавіатуру (або натисніть клавішу) і спробуйте ще раз.</value>
   </data>
   <data name="RestoreAtStartup" xml:space="preserve">
-    <value>Відновлювати під час завантаження та входу, зокрема на екрані входу (клавіатури й миші; якщо пристрій забрав інший хост, пару буде створено заново без діалогу). Потрібна служба.</value>
+    <value>Відновлювати під час завантаження та входу</value>
   </data>
   <data name="ServiceGroup" xml:space="preserve">
     <value>Фонова служба</value>
@@ -359,5 +359,8 @@
   </data>
   <data name="ServiceHintDeviceInfo" xml:space="preserve">
     <value>ідентифікація пристрою</value>
+  </data>
+  <data name="RestoreAtStartupNote" xml:space="preserve">
+    <value>Зокрема на екрані входу Windows. Якщо пристрій забрав інший хост, пару буде створено заново без діалогу. Потрібна фонова служба.</value>
   </data>
 </root>

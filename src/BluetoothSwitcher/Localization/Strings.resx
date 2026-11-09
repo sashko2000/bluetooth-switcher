@@ -316,7 +316,7 @@
     <value>“{0}” did not connect. Turn the keyboard off and on (or press a key) and try again.</value>
   </data>
   <data name="RestoreAtStartup" xml:space="preserve">
-    <value>Restore at startup and sign-in, also on the sign-in screen (keyboards and mice; if another device took it over, it is paired again without a dialog). Needs the service.</value>
+    <value>Restore at startup and sign-in</value>
   </data>
   <data name="ServiceGroup" xml:space="preserve">
     <value>Background service</value>
@@ -359,5 +359,8 @@
   </data>
   <data name="ServiceHintDeviceInfo" xml:space="preserve">
     <value>device identification</value>
+  </data>
+  <data name="RestoreAtStartupNote" xml:space="preserve">
+    <value>Also on the Windows sign-in screen. If another device took it over, it is paired again without a dialog. Needs the background service.</value>
   </data>
 </root>

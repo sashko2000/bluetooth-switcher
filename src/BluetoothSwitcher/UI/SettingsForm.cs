@@ -23,6 +23,7 @@ internal sealed class SettingsForm : Form
 
     private readonly GroupBox _servicesGroup;
     private readonly CheckBox _restore;
+    private readonly Label _restoreNote;
     private readonly CheckBox _autoServices;
     private readonly CheckedListBox _services;
     private readonly Label _servicesNote;
@@ -99,9 +100,16 @@ internal sealed class SettingsForm : Form
             Text = Strings.RestoreAtStartup,
             AutoSize = true,
             Dock = DockStyle.Top,
-            Padding = new Padding(0, 0, 0, 4),
         };
         _restore.CheckedChanged += (_, _) => OnRestoreEdited();
+        _restoreNote = new Label
+        {
+            Text = Strings.RestoreAtStartupNote,
+            AutoSize = true,
+            Dock = DockStyle.Top,
+            ForeColor = SystemColors.GrayText,
+            Padding = new Padding(16, 0, 0, 6),
+        };
 
         _autoServices = new CheckBox
         {
@@ -133,13 +141,14 @@ internal sealed class SettingsForm : Form
         {
             Text = Strings.ServicesGroup,
             Dock = DockStyle.Fill,
-            Height = 200,
+            Height = 230,
             Padding = new Padding(8),
             Enabled = false,
         };
         _servicesGroup.Controls.Add(_services);
         _servicesGroup.Controls.Add(_servicesNote);
         _servicesGroup.Controls.Add(_autoServices);
+        _servicesGroup.Controls.Add(_restoreNote);
         _servicesGroup.Controls.Add(_restore); // added last so that it is docked at the very top
 
         // --- General options ---
@@ -273,7 +282,7 @@ internal sealed class SettingsForm : Form
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 200));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 230));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -295,7 +304,7 @@ internal sealed class SettingsForm : Form
             _appleStatus.MaximumSize = new Size(Math.Max(100, width - 260), 0);
             _serviceInfo.MaximumSize = new Size(Math.Max(100, width - 20), 0);
             _serviceStatus.MaximumSize = new Size(Math.Max(100, width - 320), 0);
-            _restore.MaximumSize = new Size(Math.Max(100, width - 20), 0);
+            _restoreNote.MaximumSize = new Size(Math.Max(100, width - 20), 0);
         }
         root.SizeChanged += (_, _) => Wrap();
 

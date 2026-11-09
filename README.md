@@ -10,9 +10,22 @@ Windows PC and a Mac, an iPad, a phone or another PC:
   the top row sends F1–F12 or media keys by default;
 - **shows the battery level** of the keyboard in the tray and warns when it runs low.
 
-It also works with other Bluetooth devices: it switches other multi-host keyboards and reconnects speakers or
-headphones (e.g. to bring the microphone back). Tested with Apple Magic Keyboard A2450 (2021); the Fn driver supports
-Magic Keyboard 2015–2021.
+It is also a **one-click reconnector for any other Bluetooth device** paired with Windows:
+
+- **speakers and headphones**: disconnect and connect again in one click, e.g. when a speaker “forgets” its microphone
+  (Hands-Free) — no more Settings → Bluetooth → Disconnect → Connect;
+- **other multi-host keyboards and mice** (Logitech, Keychron, Microsoft…): pull them over from another computer;
+- **battery level** of headsets, speakers and BLE devices that report it.
+
+Tested with Apple Magic Keyboard A2450 (2021); the Fn driver supports Magic Keyboard 2015–2021.
+
+<p align="center">
+  <img src="docs/tray-menu.png" alt="Tray menu: reconnect Magic Keyboard (battery 38%), connect a speaker" width="324">
+</p>
+
+<p align="center">
+  <img src="docs/settings.png" alt="Settings: devices, services to reconnect, background service, Apple Magic Keyboard driver" width="600">
+</p>
 
 ## Download
 
@@ -116,9 +129,10 @@ When the level drops to the configured threshold (15% by default, 0 turns it off
      The public Windows API offers no way to force-disconnect an active BLE connection.
 4. The app waits until the connection has held steadily for a few seconds and shows a notification.
 
-> ⚠️ The result depends on the device firmware. Many keyboards (Logitech MX Keys/K380/K780, Keychron,
-> Microsoft, Apple Magic Keyboard, etc.) accept an incoming connection from a host paired on another
-> channel and switch over by themselves. Some only listen on the active channel; those cannot be
+> ⚠️ The result depends on the device firmware. Many multi-channel keyboards (Logitech MX Keys/K380/K780, Keychron,
+> Microsoft, etc.) accept an incoming connection from a host paired on another channel and switch over by themselves.
+> Apple Magic Keyboard has a single channel and needs to be paired again after another host: that is what the
+> background service does. Some only listen on the active channel; those cannot be
 > switched from software at all. Speakers that support only one connection at a time may also refuse
 > until they are disconnected from the other computer.
 
