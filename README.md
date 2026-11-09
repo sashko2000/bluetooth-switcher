@@ -189,7 +189,7 @@ confirmation when Windows denies an action.
 
 ## Upgrading from Bluetooth Switcher
 
-Before 1.1 the app was called **Bluetooth Switcher**. On the first start, MagicSwitcher copies its settings from
+Before 1.2 the app was called **Bluetooth Switcher**. On the first start, MagicSwitcher copies its settings from
 `%AppData%\BluetoothSwitcher` and moves the **Start with Windows** entry. Bluetooth Switcher 1.0 ran elevated through
 a Task Scheduler task: MagicSwitcher removes it (one UAC confirmation). Installing the MagicSwitcher service removes an
 older Bluetooth Switcher service.
@@ -200,8 +200,8 @@ Pushing a version tag builds the app on GitHub Actions and publishes a release w
 (`.github/workflows/release.yml`); the version is taken from the tag:
 
 ```powershell
-git tag v1.1.0
-git push origin v1.1.0
+git tag v1.2.0
+git push origin v1.2.0
 ```
 
 ## Files

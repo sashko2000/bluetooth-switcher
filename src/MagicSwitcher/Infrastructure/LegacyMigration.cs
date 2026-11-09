@@ -3,7 +3,7 @@ using Microsoft.Win32;
 namespace MagicSwitcher.Infrastructure;
 
 /// <summary>
-/// The app was called "Bluetooth Switcher" before 1.1. Its settings, autostart entry and service are moved over
+/// The app was called "Bluetooth Switcher" before 1.2. Its settings, autostart entry and service are moved over
 /// to the new name: the tray app does the per-user part at start, the service installer removes the old service.
 /// </summary>
 internal static class LegacyMigration
