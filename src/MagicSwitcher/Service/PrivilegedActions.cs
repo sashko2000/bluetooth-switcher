@@ -47,7 +47,13 @@ internal static class PrivilegedActions
             Command = ServiceCommands.Configure,
             Devices = devices
                 .Where(d => d.RestoreAtStartup && !d.IsLowEnergy)
-                .Select(d => new GuardedDevice { Address = d.Address, Name = d.DisplayName, Services = ServicesAfterPairing(d) })
+                .Select(d => new GuardedDevice
+                {
+                    Address = d.Address,
+                    Name = d.DisplayName,
+                    Services = ServicesAfterPairing(d),
+                    RefreshAfterConnect = d.RefreshAfterWake,
+                })
                 .ToList(),
             AppleMediaKeys = appleMediaKeys,
         };

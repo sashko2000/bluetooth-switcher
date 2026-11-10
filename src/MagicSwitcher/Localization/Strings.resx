@@ -361,7 +361,7 @@
     <value>device identification</value>
   </data>
   <data name="RestoreAtStartupNote" xml:space="preserve">
-    <value>Also on the Windows sign-in screen. If another device took it over, it is paired again without a dialog. Needs the background service.</value>
+    <value>Also on the Windows sign-in screen. If another device took it over, it is paired again without a dialog. Needs the background service. Refreshing the connection helps when the sign-in screen ignores the keyboard after startup or sleep.</value>
   </data>
   <data name="ResultNoMicrophone" xml:space="preserve">
     <value>“{0}” is connected, but its microphone did not come back. Try again, or turn the device off and on.</value>
@@ -383,5 +383,8 @@
   </data>
   <data name="AudioRestartFailed" xml:space="preserve">
     <value>Could not restart Windows audio: {0}</value>
+  </data>
+  <data name="RefreshAfterWake" xml:space="preserve">
+    <value>Refresh the connection after startup and sleep (typing pauses for a few seconds)</value>
   </data>
 </root>

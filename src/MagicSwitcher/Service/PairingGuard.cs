@@ -80,7 +80,7 @@ internal sealed class PairingGuard : IDisposable
                 }
 
                 Log.Info($"[Guard] {trigger}: '{Name(device)}' is not working ({state}, {hid}): watching for {plan.Duration.TotalMinutes:0} min");
-                StartSession(device, plan, trigger.ToString());
+                StartSession(device, plan, trigger.ToString(), refreshWhenBack: device.RefreshAfterConnect);
             }
         }
     }
@@ -110,9 +110,10 @@ internal sealed class PairingGuard : IDisposable
         }
     }
 
-    private Session StartSession(GuardedDevice device, Plan plan, string reason, Action<string>? progress = null, bool forceFirstKnock = false)
+    private Session StartSession(GuardedDevice device, Plan plan, string reason, Action<string>? progress = null,
+        bool forceFirstKnock = false, bool refreshWhenBack = false)
     {
-        var session = new Session(device, plan, progress) { ForceFirstKnock = forceFirstKnock };
+        var session = new Session(device, plan, progress) { ForceFirstKnock = forceFirstKnock, RefreshWhenBack = refreshWhenBack };
         _sessions[device.Address] = session;
         _ = Task.Run(async () =>
         {
@@ -162,6 +163,11 @@ internal sealed class PairingGuard : IDisposable
             var state = NativeBluetooth.GetState(device.Address);
             if (state.IsWorking && !(session.ForceFirstKnock && knocks == 0))
             {
+                if (session.RefreshWhenBack && knocks == 0)
+                {
+                    await RefreshAsync(device, ct);
+                }
+
                 return true;
             }
 
@@ -177,6 +183,28 @@ internal sealed class PairingGuard : IDisposable
         }
 
         return NativeBluetooth.GetState(device.Address).IsWorking;
+    }
+
+    /// <summary>
+    /// The device came back by itself after startup or sleep: reinstall HID once. After a start with Windows Fast Startup
+    /// the keyboard may look connected while the sign-in screen ignores it (a restored driver state or a key that Windows
+    /// still thinks is held down); a fresh HID device resets both. The keyboard does not type for a few seconds.
+    /// </summary>
+    private static async Task RefreshAsync(GuardedDevice device, CancellationToken ct)
+    {
+        // Let the connection settle first: touching a connection that is still coming up makes Windows drop the key.
+        await Task.Delay(TimeSpan.FromSeconds(5), ct);
+        if (!NativeBluetooth.GetState(device.Address).IsWorking)
+        {
+            return; // went away again: the next event handles it
+        }
+
+        int error = await Task.Run(() => NativeBluetooth.EnableServices(device.Address, device.Services), ct);
+        Log.Info($"[Guard] '{Name(device)}' came back by itself: refreshing the connection (services reinstalled -> {error})");
+        for (int i = 0; i < 30 && !NativeBluetooth.GetState(device.Address).IsWorking; i++)
+        {
+            await Task.Delay(1000, ct);
+        }
     }
 
     /// <summary>One attempt (tested with Apple Magic Keyboard, see tools/PairingProbe in the history).</summary>
@@ -394,6 +422,9 @@ internal sealed class PairingGuard : IDisposable
         public Plan Plan { get; private set; } = plan;
         public DateTime Deadline { get; private set; } = DateTime.UtcNow + plan.Duration;
         public DateTime NextKnock { get; set; } = DateTime.UtcNow + plan.InitialWait;
+
+        /// <summary>Refresh the connection once if the device comes back by itself (startup, sleep, display on).</summary>
+        public bool RefreshWhenBack { get; init; }
 
         /// <summary>Knock once even if Windows reports the device as working (the tray says it does not type).</summary>
         public bool ForceFirstKnock { get; set; }

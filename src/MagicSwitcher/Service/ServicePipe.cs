@@ -30,6 +30,9 @@ public sealed record GuardedDevice
     public string Name { get; init; } = "";
     /// <summary>Services enabled after pairing; null means HID.</summary>
     public List<Guid>? Services { get; init; }
+
+    /// <summary>When the device comes back by itself after startup or sleep, reinstall HID once (see PairingGuard).</summary>
+    public bool RefreshAfterConnect { get; init; }
 }
 
 internal sealed class ServiceRequest
