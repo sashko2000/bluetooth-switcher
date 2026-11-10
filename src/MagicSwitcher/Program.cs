@@ -51,6 +51,11 @@ internal static class Program
             return ServiceInstaller.UninstallElevated();
         }
 
+        if (Has(args, WindowsAudio.RestartArgument))
+        {
+            return WindowsAudio.Restart();
+        }
+
         if (Has(args, PrivilegedActions.ReinstallArgument))
         {
             return PrivilegedActions.RunReinstallElevated(args);

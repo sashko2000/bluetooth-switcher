@@ -86,8 +86,14 @@ internal static class AppleKeyboardDriver
                 return null;
             }
 
-            // The driver's INF sets 1 (Mac behavior) on installation.
-            return key.GetValue(FnBehaviorValue) is int value ? value != 0 : true;
+            // The driver's INF writes binary 01 (Mac behavior) whenever a keyboard is installed — also when Windows
+            // installs it again after it was paired again — so the user's choice has to be re-applied (the service does).
+            return key.GetValue(FnBehaviorValue) switch
+            {
+                int value => value != 0,
+                byte[] bytes => bytes.Length == 0 || bytes[0] != 0,
+                _ => true,
+            };
         }
     }
 

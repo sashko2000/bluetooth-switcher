@@ -132,4 +132,10 @@ internal static class Strings
     public static string ServiceHintDeviceInfo => Get(nameof(ServiceHintDeviceInfo));
     public static string RestoreAtStartupNote => Get(nameof(RestoreAtStartupNote));
     public static string ResultNoMicrophone(object? arg0) => Format(nameof(ResultNoMicrophone), arg0);
+    public static string TrayRestartAudio => Get(nameof(TrayRestartAudio));
+    public static string TrayRestartingAudio => Get(nameof(TrayRestartingAudio));
+    public static string TrayRestartAudioTooltip => Get(nameof(TrayRestartAudioTooltip));
+    public static string AudioRestarted => Get(nameof(AudioRestarted));
+    public static string AudioRestartedReconnecting => Get(nameof(AudioRestartedReconnecting));
+    public static string AudioRestartFailed(object? arg0) => Format(nameof(AudioRestartFailed), arg0);
 }

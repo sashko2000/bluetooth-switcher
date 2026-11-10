@@ -19,6 +19,9 @@ public sealed class AppSettings
     /// <summary>UI language code ("en", "ru", "uk"); empty means the Windows display language.</summary>
     public string Language { get; set; } = "";
 
+    /// <summary>Apple keyboard top row chosen in settings (true = media keys); null if never changed. The service re-applies it.</summary>
+    public bool? AppleMediaKeysByDefault { get; set; }
+
     public AppSettings Clone() => new()
     {
         Devices = Devices.Select(d => d with { Services = d.Services?.ToList() }).ToList(),
@@ -26,6 +29,7 @@ public sealed class AppSettings
         ShowNotifications = ShowNotifications,
         LowBatteryThreshold = LowBatteryThreshold,
         Language = Language,
+        AppleMediaKeysByDefault = AppleMediaKeysByDefault,
     };
 }
 

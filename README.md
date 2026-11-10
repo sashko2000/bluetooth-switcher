@@ -15,7 +15,9 @@ It is also a **one-click reconnector for any other Bluetooth device** paired wit
 - **speakers and headphones**: disconnect and connect again in one click, e.g. when a speaker “forgets” its microphone
   (Hands-Free) — no more Settings → Bluetooth → Disconnect → Connect;
 - **other multi-host keyboards and mice** (Logitech, Keychron, Microsoft…): pull them over from another computer;
-- **battery level** of headsets, speakers and BLE devices that report it.
+- **battery level** of headsets, speakers and BLE devices that report it;
+- **Restart Windows audio** in the tray menu: when sound or the microphone stops working everywhere and otherwise only
+  a reboot would help.
 
 Tested with Apple Magic Keyboard A2450 (2021); the Fn driver supports Magic Keyboard 2015–2021.
 
@@ -91,6 +93,8 @@ top row do not work. Apple's Boot Camp keyboard driver fixes that, and the app c
 - **Top row keys** lets you choose the default behavior: F1–F12 with media on Fn, or media keys with F1–F12 on Fn
   (the driver's `OSXFnBehavior` setting, Mac behavior after installation). The driver reads it only when it starts,
   so the app restarts the keyboard right away to apply the change (`pnputil /restart-device`).
+  The driver's installer resets this setting to Mac behavior whenever Windows installs the keyboard again — e.g. after it
+  was paired again — so the background service remembers your choice and re-applies it within half a minute.
 - The lock key (top right on 2021 models) is not handled by the driver.
 - To remove the driver: Device Manager → the keyboard (“Apple Keyboard”) → Uninstall device → check
   “Attempt to remove the driver for this device”, then reconnect the keyboard.
@@ -107,6 +111,14 @@ If a connected device reports its battery level, it is shown in the menu item
    that use the same report should work too, but have not been tested).
 
 When the level drops to the configured threshold (15% by default, 0 turns it off), a notification is shown.
+
+## Sound stopped working everywhere: Restart Windows audio
+
+On some laptops the audio driver occasionally gets stuck: the speakers, the microphone and Bluetooth audio stop working
+at once (on Intel Smart Sound laptops Bluetooth audio goes through the same audio DSP), turning the speaker off and on does
+not help, and a reboot does. **Restart Windows audio** in the tray menu restarts the Windows audio services
+(`AudioEndpointBuilder`, `Audiosrv` and the services that depend on them) and then reconnects the selected speakers and
+headsets that are connected. It goes through the background service (no prompt) or asks for a UAC confirmation.
 
 ## Other devices and how connecting works
 
@@ -215,7 +227,7 @@ git push origin v1.2.0
 | `%AppData%\MagicSwitcher\settings.json` | settings (selected devices and services, timeout, language, battery threshold) |
 | `%AppData%\MagicSwitcher\log.txt` | log (can be opened from the tray menu) |
 | `%ProgramFiles%\MagicSwitcher\` | the service's copy of the app |
-| `%ProgramData%\MagicSwitcher\service.json` | devices the service restores |
+| `%ProgramData%\MagicSwitcher\service.json` | devices the service restores, Apple keyboard top row choice |
 | `%ProgramData%\MagicSwitcher\service-log.txt` | service log (**Open service log** in the tray menu) |
 
 ## Project structure

@@ -26,6 +26,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private int _trayAttempts;
 
     private AppSettings _settings;
+    private bool _audioRestarting;
     private SettingsForm? _settingsForm;
 
     public TrayApplicationContext()
@@ -127,7 +128,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         await RefreshMonitorAsync();
         await RefreshBatteryAsync();
-        await PrivilegedActions.ConfigureServiceAsync(_settings.Devices);
+        await PrivilegedActions.ConfigureServiceAsync(_settings.Devices, _settings.AppleMediaKeysByDefault);
     }
 
     private async Task RefreshMonitorAsync()
@@ -184,6 +185,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
 
         _menu.Items.Add(new ToolStripSeparator());
+        _menu.Items.Add(new ToolStripMenuItem(_audioRestarting ? Strings.TrayRestartingAudio : Strings.TrayRestartAudio, null,
+            async (_, _) => await RestartAudioAsync())
+        {
+            Enabled = !_audioRestarting,
+            ToolTipText = Strings.TrayRestartAudioTooltip,
+        });
         _menu.Items.Add(new ToolStripMenuItem(Strings.TraySettings, null, (_, _) => ShowSettings()));
 
         _menu.Items.Add(new ToolStripMenuItem(Strings.TrayOpenLog, null, (_, _) => OpenLog(Log.FilePath)));
@@ -390,31 +397,101 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _settingsForm.FormClosed += async (_, _) =>
         {
             var result = _settingsForm.Result;
+            bool? appleMediaKeys = _settingsForm.AppleMediaKeysByDefault;
             _settingsForm = null;
             if (result is null)
             {
+                // Cancelled, but the top row choice was applied right away: keep it.
+                if (appleMediaKeys != _settings.AppleMediaKeysByDefault)
+                {
+                    _settings.AppleMediaKeysByDefault = appleMediaKeys;
+                    TrySaveSettings();
+                }
+
                 return;
             }
 
             _settings = result;
             AppLanguage.Apply(_settings.Language);
-            try
-            {
-                SettingsStore.Save(_settings);
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Failed to save settings", ex);
-                Notify(Strings.NotifyError, Strings.NotifySaveFailed(ex.Message), ToolTipIcon.Error, force: true);
-            }
+            TrySaveSettings();
 
             RebuildMenu();
-            await PrivilegedActions.ConfigureServiceAsync(_settings.Devices);
+            await PrivilegedActions.ConfigureServiceAsync(_settings.Devices, _settings.AppleMediaKeysByDefault);
             await RefreshMonitorAsync();
             await RefreshBatteryAsync();
         };
         _settingsForm.Show();
         _settingsForm.Activate();
+    }
+
+    private void TrySaveSettings()
+    {
+        try
+        {
+            SettingsStore.Save(_settings);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to save settings", ex);
+            Notify(Strings.NotifyError, Strings.NotifySaveFailed(ex.Message), ToolTipIcon.Error, force: true);
+        }
+    }
+
+    /// <summary>
+    /// Restarts the Windows audio services, then reconnects the selected speakers and headsets that are connected:
+    /// what helps when sound and the microphone stop working everywhere and otherwise only a reboot would.
+    /// </summary>
+    private async Task RestartAudioAsync()
+    {
+        if (_audioRestarting)
+        {
+            return;
+        }
+
+        _audioRestarting = true;
+        RebuildMenu();
+        try
+        {
+            Log.Info("Restarting Windows audio");
+            int error = await PrivilegedActions.RestartWindowsAudioAsync();
+            Log.Info($"Restart Windows audio -> {error}");
+            if (error != 0)
+            {
+                Notify(Strings.NotifyFailed, Strings.AudioRestartFailed(new System.ComponentModel.Win32Exception(error).Message), ToolTipIcon.Warning, force: true);
+                return;
+            }
+
+            // Bluetooth audio devices reconnect their audio endpoints to the restarted services.
+            var audioDevices = _settings.Devices
+                .Where(d => !d.IsLowEnergy && _monitor.IsConnected(d) == true && IsAudioDevice(d))
+                .ToList();
+            Notify(Strings.NotifyDone, audioDevices.Count > 0 ? Strings.AudioRestartedReconnecting : Strings.AudioRestarted, ToolTipIcon.Info);
+            foreach (var device in audioDevices)
+            {
+                await ReconnectAsync(device);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // UAC prompt declined.
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to restart Windows audio", ex);
+            Notify(Strings.NotifyError, ex.Message, ToolTipIcon.Error, force: true);
+        }
+        finally
+        {
+            _audioRestarting = false;
+            RebuildMenu();
+        }
+    }
+
+    private static bool IsAudioDevice(SavedDevice device)
+    {
+        var installed = NativeBluetooth.TryGetInstalledServices(device.Address);
+        return installed is not null
+               && (NativeBluetooth.HasMicrophoneProfile(installed) || installed.Contains(NativeBluetooth.A2dpSinkServiceClass));
     }
 
     private static void OpenLog(string path)

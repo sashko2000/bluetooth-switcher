@@ -366,4 +366,22 @@
   <data name="ResultNoMicrophone" xml:space="preserve">
     <value>«{0}» підключено, але мікрофон не повернувся. Спробуйте ще раз або вимкніть і ввімкніть пристрій.</value>
   </data>
+  <data name="TrayRestartAudio" xml:space="preserve">
+    <value>Перезапустити звук Windows</value>
+  </data>
+  <data name="TrayRestartingAudio" xml:space="preserve">
+    <value>Перезапуск звуку Windows…</value>
+  </data>
+  <data name="TrayRestartAudioTooltip" xml:space="preserve">
+    <value>Якщо звук або мікрофон зникли всюди: перезапускає служби звуку Windows і перепідключає вибрані колонки та гарнітури.</value>
+  </data>
+  <data name="AudioRestarted" xml:space="preserve">
+    <value>Звук Windows перезапущено.</value>
+  </data>
+  <data name="AudioRestartedReconnecting" xml:space="preserve">
+    <value>Звук Windows перезапущено. Перепідключаю колонки та гарнітури…</value>
+  </data>
+  <data name="AudioRestartFailed" xml:space="preserve">
+    <value>Не вдалося перезапустити звук Windows: {0}</value>
+  </data>
 </root>

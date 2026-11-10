@@ -19,6 +19,8 @@ internal static class ServiceCommands
     public const string Pull = "pull";
     public const string AppleInstall = "apple-install";
     public const string AppleFn = "apple-fn";
+    /// <summary>Restarts the Windows audio services.</summary>
+    public const string RestartAudio = "restart-audio";
 }
 
 /// <summary>A device the service keeps working: restored at startup, sign-in, unlock, wake and on request.</summary>
@@ -41,6 +43,8 @@ internal sealed class ServiceRequest
     /// <summary>Pull: knock at least once even if Windows reports the device as connected (it may be stale).</summary>
     public bool Force { get; set; }
     public List<GuardedDevice>? Devices { get; set; }
+    /// <summary>Configure: the Apple keyboard top row behavior the user chose (null: unknown, keep the service's).</summary>
+    public bool? AppleMediaKeys { get; set; }
 }
 
 internal sealed class ServiceResponse

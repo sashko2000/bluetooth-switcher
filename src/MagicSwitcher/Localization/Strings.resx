@@ -366,4 +366,22 @@
   <data name="ResultNoMicrophone" xml:space="preserve">
     <value>“{0}” is connected, but its microphone did not come back. Try again, or turn the device off and on.</value>
   </data>
+  <data name="TrayRestartAudio" xml:space="preserve">
+    <value>Restart Windows audio</value>
+  </data>
+  <data name="TrayRestartingAudio" xml:space="preserve">
+    <value>Restarting Windows audio…</value>
+  </data>
+  <data name="TrayRestartAudioTooltip" xml:space="preserve">
+    <value>When sound or the microphone stops working everywhere: restarts the Windows audio services and reconnects the selected speakers and headsets.</value>
+  </data>
+  <data name="AudioRestarted" xml:space="preserve">
+    <value>Windows audio has been restarted.</value>
+  </data>
+  <data name="AudioRestartedReconnecting" xml:space="preserve">
+    <value>Windows audio has been restarted. Reconnecting the speakers and headsets…</value>
+  </data>
+  <data name="AudioRestartFailed" xml:space="preserve">
+    <value>Could not restart Windows audio: {0}</value>
+  </data>
 </root>

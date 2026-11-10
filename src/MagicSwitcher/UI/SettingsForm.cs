@@ -45,12 +45,19 @@ internal sealed class SettingsForm : Form
     private ListViewItem? _servicesItem;
     private int _servicesVersion;
 
+    /// <summary>
+    /// Apple keyboard top row chosen in this window. It is applied right away (not on Save), so the tray keeps it
+    /// even if the window is cancelled.
+    /// </summary>
+    public bool? AppleMediaKeysByDefault { get; private set; }
+
     /// <summary>New settings if the user clicked "Save"; otherwise null.</summary>
     public AppSettings? Result { get; private set; }
 
     public SettingsForm(AppSettings settings)
     {
         _settings = settings;
+        AppleMediaKeysByDefault = settings.AppleMediaKeysByDefault;
 
         Text = Strings.SettingsTitle;
         StartPosition = FormStartPosition.CenterScreen;
@@ -620,7 +627,7 @@ internal sealed class SettingsForm : Form
                 await Task.Delay(500);
             }
 
-            await PrivilegedActions.ConfigureServiceAsync(CurrentDevices());
+            await PrivilegedActions.ConfigureServiceAsync(CurrentDevices(), AppleMediaKeysByDefault);
         }
         catch (OperationCanceledException)
         {
@@ -743,6 +750,7 @@ internal sealed class SettingsForm : Form
         {
             bool restarted = await PrivilegedActions.SetAppleMediaKeysByDefaultAsync(media);
             Log.Info($"Apple keyboard: media keys by default = {media}, keyboard restarted = {restarted}");
+            AppleMediaKeysByDefault = media;
             status = restarted ? Strings.AppleFnAppliedNow : Strings.AppleFnApplied;
         }
         catch (OperationCanceledException)
@@ -785,6 +793,7 @@ internal sealed class SettingsForm : Form
             ShowNotifications = _notifications.Checked,
             LowBatteryThreshold = (int)_lowBattery.Value,
             Language = (_language.SelectedItem as LanguageItem)?.Code ?? "",
+            AppleMediaKeysByDefault = AppleMediaKeysByDefault,
         };
 
         Close();

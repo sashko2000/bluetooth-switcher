@@ -35,7 +35,7 @@ internal static class PrivilegedActions
     }
 
     /// <summary>Tells the service which devices to restore. Returns false if the service is not running.</summary>
-    public static async Task<bool> ConfigureServiceAsync(IEnumerable<SavedDevice> devices)
+    public static async Task<bool> ConfigureServiceAsync(IEnumerable<SavedDevice> devices, bool? appleMediaKeys)
     {
         if (ServiceInstaller.GetState() != ServiceState.Running)
         {
@@ -49,6 +49,7 @@ internal static class PrivilegedActions
                 .Where(d => d.RestoreAtStartup && !d.IsLowEnergy)
                 .Select(d => new GuardedDevice { Address = d.Address, Name = d.DisplayName, Services = ServicesAfterPairing(d) })
                 .ToList(),
+            AppleMediaKeys = appleMediaKeys,
         };
 
         try
@@ -176,6 +177,31 @@ internal static class PrivilegedActions
         }
 
         return response.Ok ? response.Code == 1 : throw new InvalidOperationException(response.Message);
+    }
+
+    /// <summary>Restarts the Windows audio services: through the service, or with a UAC prompt. Returns a Win32 error code.</summary>
+    public static async Task<int> RestartWindowsAudioAsync()
+    {
+        try
+        {
+            var response = await SendOrNullAsync(new ServiceRequest { Command = ServiceCommands.RestartAudio }, TimeSpan.FromMinutes(2));
+            if (response is not null)
+            {
+                return response.Code;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or TimeoutException)
+        {
+            Log.Error("The service failed to restart Windows audio; trying with UAC", ex);
+        }
+
+        if (Elevation.IsElevated)
+        {
+            return await Task.Run(WindowsAudio.Restart);
+        }
+
+        string exe = Environment.ProcessPath ?? throw new InvalidOperationException("Unknown executable path.");
+        return await Elevation.RunAsAdminAsync(exe, WindowsAudio.RestartArgument); // throws OperationCanceledException if declined
     }
 
     private static async Task<ServiceResponse?> SendOrNullAsync(ServiceRequest request, TimeSpan timeout, IProgress<string>? progress = null) =>
