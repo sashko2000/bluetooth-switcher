@@ -36,9 +36,14 @@ internal sealed class PairingGuard : IDisposable
     private readonly Dictionary<ulong, Session> _sessions = [];
     private IReadOnlyList<GuardedDevice> _devices = [];
     private readonly CancellationTokenSource _stopping = new();
+    private readonly System.Threading.Timer _stateTimer;
+    private readonly Dictionary<ulong, string> _lastStates = []; // state timer only
+    private int _loggingStates;
 
     public PairingGuard()
     {
+        _stateTimer = new System.Threading.Timer(_ => LogStateChanges(), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+
         // Pairing callbacks are delivered through the message queue of the thread that registered them.
         _loop = new Thread(RunLoop) { IsBackground = true, Name = "Pairing message loop" };
         _loop.SetApartmentState(ApartmentState.STA);
@@ -58,20 +63,23 @@ internal sealed class PairingGuard : IDisposable
         var plan = Plan.For(trigger);
         foreach (var device in Devices)
         {
+            var state = NativeBluetooth.GetState(device.Address);
+            string hid = DescribeHid(device, state);
             lock (_sync)
             {
                 if (_sessions.ContainsKey(device.Address))
                 {
+                    Log.Info($"[Guard] {trigger}: '{Name(device)}' {state}, {hid}: already watching");
                     continue;
                 }
 
-                var state = NativeBluetooth.GetState(device.Address);
                 if (state.IsWorking)
                 {
+                    Log.Info($"[Guard] {trigger}: '{Name(device)}' {state}, {hid}: works, nothing to do");
                     continue;
                 }
 
-                Log.Info($"[Guard] {trigger}: '{Name(device)}' is not working ({state}): watching for {plan.Duration.TotalMinutes:0} min");
+                Log.Info($"[Guard] {trigger}: '{Name(device)}' is not working ({state}, {hid}): watching for {plan.Duration.TotalMinutes:0} min");
                 StartSession(device, plan, trigger.ToString());
             }
         }
@@ -293,9 +301,72 @@ internal sealed class PairingGuard : IDisposable
 
     public void Dispose()
     {
+        _stateTimer.Dispose();
         _stopping.Cancel();
         PostThreadMessage(_loopThreadId, WmQuit, IntPtr.Zero, IntPtr.Zero);
         _loop.Join(TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>
+    /// Writes every change of a guarded device's state to the log (checked every 5 seconds), so it is clear later
+    /// what happened between events, e.g. on the sign-in screen.
+    /// </summary>
+    private void LogStateChanges()
+    {
+        if (Interlocked.Exchange(ref _loggingStates, 1) == 1)
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (var device in Devices)
+            {
+                var state = NativeBluetooth.GetState(device.Address);
+                string text = state.ToString();
+                if (_lastStates.TryGetValue(device.Address, out var last) && last == text)
+                {
+                    continue;
+                }
+
+                _lastStates[device.Address] = text;
+                Log.Info($"[Guard] '{Name(device)}' state: {text}, {DescribeHid(device, state)}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error("[Guard] State check failed", ex);
+        }
+        finally
+        {
+            Volatile.Write(ref _loggingStates, 0);
+        }
+    }
+
+    /// <summary>How many HID collections Windows has for the device: none while it is connected means it does not type.</summary>
+    private static string DescribeHid(GuardedDevice device, DeviceState state)
+    {
+        if (!state.Connected)
+        {
+            return "HID -";
+        }
+
+        try
+        {
+            var saved = new SavedDevice { Address = device.Address, Name = device.Name };
+            var containerId = BatteryReader.TryGetContainerIdAsync(saved).WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+            if (containerId is not { } id)
+            {
+                return "HID ? (no container)";
+            }
+
+            int count = HidNative.FindCollectionPathsAsync(id).WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult().Count;
+            return $"HID collections {count}";
+        }
+        catch (Exception ex)
+        {
+            return $"HID ? ({ex.GetType().Name})";
+        }
     }
 
     private static string Name(GuardedDevice device) =>

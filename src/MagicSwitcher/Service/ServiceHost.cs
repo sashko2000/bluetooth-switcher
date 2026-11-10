@@ -100,34 +100,56 @@ internal static class ServiceHost
 
     private static uint OnControl(uint control, uint eventType, IntPtr eventData, IntPtr context)
     {
-        // Must return quickly: the service reacts on its own threads.
+        // Must return quickly: the service reacts on its own threads (writing a log line is fast enough).
         switch (control)
         {
             case ControlStop:
             case ControlShutdown:
+                Log.Info($"Event: {(control == ControlStop ? "stop" : "shutdown")}");
                 Report(StateStopPending, waitHint: 10000);
                 Stopped.Set();
                 break;
 
-            case ControlSessionChange when eventType == WtsSessionLogon:
-                _service?.OnTrigger(ServiceTrigger.Logon);
-                break;
+            case ControlSessionChange:
+            {
+                // WTSSESSION_NOTIFICATION { DWORD cbSize; DWORD dwSessionId; }
+                int session = eventData != IntPtr.Zero ? Marshal.ReadInt32(eventData, 4) : -1;
+                Log.Info($"Event: session {session} {DescribeSessionChange(eventType)}");
+                if (eventType == WtsSessionLogon)
+                {
+                    _service?.OnTrigger(ServiceTrigger.Logon);
+                }
+                else if (eventType == WtsSessionUnlock)
+                {
+                    _service?.OnTrigger(ServiceTrigger.Unlock);
+                }
 
-            case ControlSessionChange when eventType == WtsSessionUnlock:
-                _service?.OnTrigger(ServiceTrigger.Unlock);
                 break;
-
-            case ControlPowerEvent when eventType == PbtApmResumeAutomatic:
-                _service?.OnTrigger(ServiceTrigger.Resume);
-                break;
+            }
 
             case ControlPowerEvent when eventType == PbtPowerSettingChange && eventData != IntPtr.Zero:
+            {
                 // POWERBROADCAST_SETTING { GUID PowerSetting; DWORD DataLength; UCHAR Data[1]; }
                 var setting = Marshal.PtrToStructure<Guid>(eventData);
                 int length = Marshal.ReadInt32(eventData, 16);
-                if (setting == ConsoleDisplayState && length >= 4 && Marshal.ReadInt32(eventData, 20) == 1)
+                if (setting == ConsoleDisplayState && length >= 4)
                 {
-                    _service?.OnTrigger(ServiceTrigger.DisplayOn);
+                    int display = Marshal.ReadInt32(eventData, 20);
+                    Log.Info($"Event: display {(display switch { 0 => "off", 1 => "on", 2 => "dimmed", _ => display.ToString() })}");
+                    if (display == 1)
+                    {
+                        _service?.OnTrigger(ServiceTrigger.DisplayOn);
+                    }
+                }
+
+                break;
+            }
+
+            case ControlPowerEvent:
+                Log.Info($"Event: power {DescribePowerEvent(eventType)}");
+                if (eventType == PbtApmResumeAutomatic)
+                {
+                    _service?.OnTrigger(ServiceTrigger.Resume);
                 }
 
                 break;
@@ -135,6 +157,32 @@ internal static class ServiceHost
 
         return 0; // NO_ERROR (also the answer to INTERROGATE)
     }
+
+    private static string DescribeSessionChange(uint eventType) => eventType switch
+    {
+        1 => "console connect",
+        2 => "console disconnect",
+        3 => "remote connect",
+        4 => "remote disconnect",
+        5 => "logon",
+        6 => "logoff",
+        7 => "lock",
+        8 => "unlock",
+        9 => "remote control",
+        10 => "create",
+        11 => "terminate",
+        _ => $"change {eventType}",
+    };
+
+    private static string DescribePowerEvent(uint eventType) => eventType switch
+    {
+        0x4 => "suspend",
+        0x7 => "resume (by user)",
+        0x12 => "resume (automatic)",
+        0xA => "power source changed",
+        0x9 => "battery low",
+        _ => $"0x{eventType:X}",
+    };
 
     private static void Report(uint state, uint waitHint = 0)
     {
