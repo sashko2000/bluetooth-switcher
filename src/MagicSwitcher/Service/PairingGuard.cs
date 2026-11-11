@@ -51,6 +51,12 @@ internal sealed class PairingGuard : IDisposable
         _loopReady.Wait();
     }
 
+    /// <summary>
+    /// Called after a guarded device was paired again. Windows then installs the keyboard anew, and the Apple driver
+    /// resets its top row setting, so the service re-applies it.
+    /// </summary>
+    public Action? AfterPairing { get; set; }
+
     public IReadOnlyList<GuardedDevice> Devices
     {
         get { lock (_sync) { return _devices; } }
@@ -80,7 +86,7 @@ internal sealed class PairingGuard : IDisposable
                 }
 
                 Log.Info($"[Guard] {trigger}: '{Name(device)}' is not working ({state}, {hid}): watching for {plan.Duration.TotalMinutes:0} min");
-                StartSession(device, plan, trigger.ToString(), refreshWhenBack: device.RefreshAfterConnect);
+                StartSession(device, plan, trigger.ToString());
             }
         }
     }
@@ -110,10 +116,9 @@ internal sealed class PairingGuard : IDisposable
         }
     }
 
-    private Session StartSession(GuardedDevice device, Plan plan, string reason, Action<string>? progress = null,
-        bool forceFirstKnock = false, bool refreshWhenBack = false)
+    private Session StartSession(GuardedDevice device, Plan plan, string reason, Action<string>? progress = null, bool forceFirstKnock = false)
     {
-        var session = new Session(device, plan, progress) { ForceFirstKnock = forceFirstKnock, RefreshWhenBack = refreshWhenBack };
+        var session = new Session(device, plan, progress) { ForceFirstKnock = forceFirstKnock };
         _sessions[device.Address] = session;
         _ = Task.Run(async () =>
         {
@@ -153,29 +158,49 @@ internal sealed class PairingGuard : IDisposable
         return session;
     }
 
-    private static async Task<bool> RunSessionAsync(Session session, CancellationToken ct)
+    /// <summary>
+    /// Knocks until the device works and keeps working for <see cref="Plan.StableFor"/>. Right after startup a keyboard
+    /// may connect and drop again a few seconds later (Windows then even removes the pairing), so one "works" is not enough.
+    /// </summary>
+    private async Task<bool> RunSessionAsync(Session session, CancellationToken ct)
     {
         var device = session.Device;
         int knocks = 0;
-        while (DateTime.UtcNow < session.Deadline)
+        DateTime? workingSince = null;
+        while (DateTime.UtcNow < session.Deadline || workingSince is not null)
         {
             ct.ThrowIfCancellationRequested();
             var state = NativeBluetooth.GetState(device.Address);
             if (state.IsWorking && !(session.ForceFirstKnock && knocks == 0))
             {
-                if (session.RefreshWhenBack && knocks == 0)
+                workingSince ??= DateTime.UtcNow;
+                if (DateTime.UtcNow - workingSince >= session.Plan.StableFor)
                 {
-                    await RefreshAsync(device, ct);
+                    return true;
                 }
 
-                return true;
+                await Task.Delay(TimeSpan.FromSeconds(2), ct);
+                continue;
+            }
+
+            if (workingSince is not null)
+            {
+                // It worked and dropped again. Without a pairing, pair right away; with one, give it a moment to
+                // reconnect by itself first (knocking a connection that is coming up breaks it).
+                workingSince = null;
+                session.NextKnock = DateTime.UtcNow + (state.Known && state.Paired ? TimeSpan.FromSeconds(15) : TimeSpan.Zero);
+                Log.Info($"[Guard] '{Name(device)}' stopped working again ({state}): keep restoring");
             }
 
             if (DateTime.UtcNow >= session.NextKnock)
             {
                 knocks++;
                 session.Report(knocks == 1 ? "Connecting…" : $"Connecting… (attempt {knocks})");
-                await Task.Run(() => Knock(device, state, knocks), ct);
+                if (await Task.Run(() => Knock(device, state, knocks), ct))
+                {
+                    AfterPairing?.Invoke();
+                }
+
                 session.NextKnock = DateTime.UtcNow + session.Plan.Interval;
             }
 
@@ -185,30 +210,9 @@ internal sealed class PairingGuard : IDisposable
         return NativeBluetooth.GetState(device.Address).IsWorking;
     }
 
-    /// <summary>
-    /// The device came back by itself after startup or sleep: reinstall HID once. After a start with Windows Fast Startup
-    /// the keyboard may look connected while the sign-in screen ignores it (a restored driver state or a key that Windows
-    /// still thinks is held down); a fresh HID device resets both. The keyboard does not type for a few seconds.
-    /// </summary>
-    private static async Task RefreshAsync(GuardedDevice device, CancellationToken ct)
-    {
-        // Let the connection settle first: touching a connection that is still coming up makes Windows drop the key.
-        await Task.Delay(TimeSpan.FromSeconds(5), ct);
-        if (!NativeBluetooth.GetState(device.Address).IsWorking)
-        {
-            return; // went away again: the next event handles it
-        }
-
-        int error = await Task.Run(() => NativeBluetooth.EnableServices(device.Address, device.Services), ct);
-        Log.Info($"[Guard] '{Name(device)}' came back by itself: refreshing the connection (services reinstalled -> {error})");
-        for (int i = 0; i < 30 && !NativeBluetooth.GetState(device.Address).IsWorking; i++)
-        {
-            await Task.Delay(1000, ct);
-        }
-    }
-
     /// <summary>One attempt (tested with Apple Magic Keyboard, see tools/PairingProbe in the history).</summary>
-    private static void Knock(GuardedDevice device, DeviceState state, int attempt)
+    /// <summary>Returns true if the device was paired again.</summary>
+    private static bool Knock(GuardedDevice device, DeviceState state, int attempt)
     {
         string name = Name(device);
         if (state.Known && state.Paired)
@@ -218,7 +222,7 @@ internal sealed class PairingGuard : IDisposable
             // the next attempt then pairs again.
             int error = NativeBluetooth.EnableServices(device.Address, device.Services);
             Log.Info($"[Guard] '{name}' knock {attempt} ({state}): services reinstalled -> {error}");
-            return;
+            return false;
         }
 
         // No key (or Windows forgot the device): pair with bonding; our callback confirms the request.
@@ -231,7 +235,10 @@ internal sealed class PairingGuard : IDisposable
             Thread.Sleep(1000);
             int error = NativeBluetooth.EnableServices(device.Address, device.Services);
             Log.Info($"[Guard] '{name}' services enabled after pairing -> {error}: {NativeBluetooth.GetState(device.Address)}");
+            return true;
         }
+
+        return false;
     }
 
     /// <summary>Called on the message loop thread when a guarded device asks to pair.</summary>
@@ -247,6 +254,10 @@ internal sealed class PairingGuard : IDisposable
         Log.Info($"[Guard] Pairing request from {BluetoothAddress.Format(request.Address)} '{request.Name}': {request.Method}, " +
                  $"{request.Requirements} -> {(accept ? "accepted" : "rejected (no session)")}, error {error}" +
                  (accept && request.WithoutBonding ? " (without bonding: the key is not kept, the next knock pairs with bonding)" : ""));
+        if (accept && error == 0 && !request.WithoutBonding)
+        {
+            AfterPairing?.Invoke();
+        }
     }
 
     private void AddRegistration(ulong address)
@@ -401,16 +412,22 @@ internal sealed class PairingGuard : IDisposable
         string.IsNullOrWhiteSpace(device.Name) ? BluetoothAddress.Format(device.Address) : device.Name;
 
     /// <summary>How long to wait before the first knock, how often to knock and when to give up.</summary>
-    private sealed record Plan(TimeSpan InitialWait, TimeSpan Interval, TimeSpan Duration)
+    /// <summary>
+    /// How long to wait before the first knock, how often to knock, when to give up,
+    /// and how long the device must keep working before the session ends.
+    /// </summary>
+    private sealed record Plan(TimeSpan InitialWait, TimeSpan Interval, TimeSpan Duration, TimeSpan StableFor)
     {
         public static Plan For(ServiceTrigger trigger) => trigger switch
         {
             // After boot or wake the keyboard reconnects by itself within seconds: do not disturb it.
-            ServiceTrigger.Startup or ServiceTrigger.Resume => new(TimeSpan.FromSeconds(45), TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(10)),
-            _ => new(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(20), TimeSpan.FromMinutes(5)),
+            ServiceTrigger.Startup or ServiceTrigger.Resume =>
+                new(TimeSpan.FromSeconds(45), TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(10), TimeSpan.FromSeconds(60)),
+            _ => new(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(20), TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(60)),
         };
 
-        public static Plan Request(TimeSpan duration) => new(TimeSpan.Zero, TimeSpan.FromSeconds(10), duration);
+        /// <summary>The tray waits for the answer, so it only needs a short confirmation.</summary>
+        public static Plan Request(TimeSpan duration) => new(TimeSpan.Zero, TimeSpan.FromSeconds(10), duration, TimeSpan.FromSeconds(5));
     }
 
     private sealed class Session(GuardedDevice device, Plan plan, Action<string>? progress)
@@ -423,9 +440,6 @@ internal sealed class PairingGuard : IDisposable
         public DateTime Deadline { get; private set; } = DateTime.UtcNow + plan.Duration;
         public DateTime NextKnock { get; set; } = DateTime.UtcNow + plan.InitialWait;
 
-        /// <summary>Refresh the connection once if the device comes back by itself (startup, sleep, display on).</summary>
-        public bool RefreshWhenBack { get; init; }
-
         /// <summary>Knock once even if Windows reports the device as working (the tray says it does not type).</summary>
         public bool ForceFirstKnock { get; set; }
         public Task<bool> Completion => _completion.Task;
@@ -433,7 +447,7 @@ internal sealed class PairingGuard : IDisposable
         /// <summary>A request from the tray joins the session: knock now and keep going for at least <paramref name="duration"/>.</summary>
         public void Expedite(TimeSpan duration, Action<string>? progress)
         {
-            Plan = Plan with { Interval = TimeSpan.FromSeconds(10) };
+            Plan = Plan with { Interval = TimeSpan.FromSeconds(10), StableFor = TimeSpan.FromSeconds(5) };
             NextKnock = DateTime.UtcNow;
             var deadline = DateTime.UtcNow + duration;
             if (deadline > Deadline)

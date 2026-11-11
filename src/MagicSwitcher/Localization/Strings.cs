@@ -138,5 +138,4 @@ internal static class Strings
     public static string AudioRestarted => Get(nameof(AudioRestarted));
     public static string AudioRestartedReconnecting => Get(nameof(AudioRestartedReconnecting));
     public static string AudioRestartFailed(object? arg0) => Format(nameof(AudioRestartFailed), arg0);
-    public static string RefreshAfterWake => Get(nameof(RefreshAfterWake));
 }

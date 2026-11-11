@@ -27,7 +27,7 @@ internal sealed class BluetoothService
     {
         Log.Info($"Service {AppInfo.Version} starting ({Environment.ProcessPath})");
         _config = LoadConfig();
-        _guard = new PairingGuard { Devices = _config.Devices };
+        _guard = new PairingGuard { Devices = _config.Devices, AfterPairing = () => _ = ReapplyAppleFnAfterPairingAsync() };
         Log.Info($"Restoring: {Describe(_guard.Devices)}; Apple top row: {DescribeFn(_config.AppleMediaKeys)}");
         _pipe = Task.Run(() => ServicePipe.ServeAsync(HandleAsync, _stopping.Token));
         OnTrigger(ServiceTrigger.Startup);
@@ -162,6 +162,25 @@ internal sealed class BluetoothService
 
             default:
                 return ServiceResponse.Failure($"Unknown command '{request.Command}'.");
+        }
+    }
+
+    /// <summary>
+    /// After pairing again Windows installs the keyboard anew and the driver's INF resets the top row a moment later:
+    /// check a few times soon after, so the keyboard restart happens before the user starts typing.
+    /// </summary>
+    private async Task ReapplyAppleFnAfterPairingAsync()
+    {
+        try
+        {
+            foreach (int seconds in new[] { 3, 5, 10, 20 })
+            {
+                await Task.Delay(TimeSpan.FromSeconds(seconds), _stopping.Token);
+                await EnsureAppleFnModeAsync();
+            }
+        }
+        catch (OperationCanceledException)
+        {
         }
     }
 

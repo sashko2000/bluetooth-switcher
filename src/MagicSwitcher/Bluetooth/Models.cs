@@ -21,12 +21,6 @@ public sealed record SavedDevice
     /// </summary>
     public bool RestoreAtStartup { get; init; }
 
-    /// <summary>
-    /// With <see cref="RestoreAtStartup"/>: when the device comes back by itself after startup or sleep, the service
-    /// refreshes the connection once (a few seconds without typing) so that it also works on the sign-in screen.
-    /// </summary>
-    public bool RefreshAfterWake { get; init; } = true;
-
     [JsonIgnore]
     public string Key => MakeKey(Address, IsLowEnergy);
 

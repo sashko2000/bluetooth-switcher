@@ -361,7 +361,7 @@
     <value>ідентифікація пристрою</value>
   </data>
   <data name="RestoreAtStartupNote" xml:space="preserve">
-    <value>Зокрема на екрані входу Windows. Якщо пристрій забрав інший хост, пару буде створено заново без діалогу. Потрібна фонова служба. Оновлення підключення допомагає, якщо після ввімкнення або сну екран входу не реагує на клавіатуру.</value>
+    <value>Зокрема на екрані входу Windows. Якщо пристрій забрав інший хост, пару буде створено заново без діалогу. Потрібна фонова служба.</value>
   </data>
   <data name="ResultNoMicrophone" xml:space="preserve">
     <value>«{0}» підключено, але мікрофон не повернувся. Спробуйте ще раз або вимкніть і ввімкніть пристрій.</value>
@@ -383,8 +383,5 @@
   </data>
   <data name="AudioRestartFailed" xml:space="preserve">
     <value>Не вдалося перезапустити звук Windows: {0}</value>
-  </data>
-  <data name="RefreshAfterWake" xml:space="preserve">
-    <value>Оновлювати підключення після ввімкнення та сну (введення завмирає на кілька секунд)</value>
   </data>
 </root>

@@ -66,10 +66,8 @@ The optional Windows service fixes that. Install it in **Settings → Background
 - if Windows still has the key, reinstalls the HID service; if the key is gone (or Windows forgot the device),
   pairs again with bonding (`BluetoothAuthenticateDeviceEx`), answers the pairing request itself
   (`BluetoothRegisterForAuthenticationEx`) so no dialog appears, and enables the HID service;
-- if the keyboard comes back by itself, refreshes the connection once (reinstalls HID; typing pauses for a few
-  seconds). After a start with Windows Fast Startup (the default for **Start → Shut down**, which restores the drivers
-  like hibernation) the keyboard may look connected while the sign-in screen ignores it; a fresh HID device fixes that.
-  Turn it off with **Refresh the connection after startup and sleep** for the device;
+- keeps watching until the keyboard has worked for a minute without interruption: right after startup it may connect
+  and drop again (Windows then removes the pairing), and the service pairs it again right away;
 - never knocks outside these events: when you hand the keyboard to a phone on purpose, it is left alone. Every event,
   the keyboard state and the service's decision are written to the service log.
 

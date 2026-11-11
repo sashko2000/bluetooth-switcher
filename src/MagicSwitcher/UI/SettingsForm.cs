@@ -24,7 +24,6 @@ internal sealed class SettingsForm : Form
     private readonly GroupBox _servicesGroup;
     private readonly CheckBox _restore;
     private readonly Label _restoreNote;
-    private readonly CheckBox _refreshAfterWake;
     private readonly CheckBox _autoServices;
     private readonly CheckedListBox _services;
     private readonly Label _servicesNote;
@@ -119,15 +118,6 @@ internal sealed class SettingsForm : Form
             Padding = new Padding(16, 0, 0, 6),
         };
 
-        _refreshAfterWake = new CheckBox
-        {
-            Text = Strings.RefreshAfterWake,
-            AutoSize = true,
-            Dock = DockStyle.Top,
-            Padding = new Padding(16, 0, 0, 6),
-        };
-        _refreshAfterWake.CheckedChanged += (_, _) => OnRestoreEdited();
-
         _autoServices = new CheckBox
         {
             Text = Strings.ServicesAuto,
@@ -158,14 +148,13 @@ internal sealed class SettingsForm : Form
         {
             Text = Strings.ServicesGroup,
             Dock = DockStyle.Fill,
-            Height = 260,
+            Height = 230,
             Padding = new Padding(8),
             Enabled = false,
         };
         _servicesGroup.Controls.Add(_services);
         _servicesGroup.Controls.Add(_servicesNote);
         _servicesGroup.Controls.Add(_autoServices);
-        _servicesGroup.Controls.Add(_refreshAfterWake);
         _servicesGroup.Controls.Add(_restoreNote);
         _servicesGroup.Controls.Add(_restore); // added last so that it is docked at the very top
 
@@ -300,7 +289,7 @@ internal sealed class SettingsForm : Form
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 260));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 230));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -517,8 +506,6 @@ internal sealed class SettingsForm : Form
 
             _autoServices.Checked = auto;
             _restore.Checked = saved.RestoreAtStartup;
-            _refreshAfterWake.Checked = saved.RefreshAfterWake;
-            _refreshAfterWake.Enabled = saved.RestoreAtStartup;
             _services.Enabled = !auto;
             _servicesGroup.Enabled = true;
             _servicesItem = item;
@@ -538,8 +525,6 @@ internal sealed class SettingsForm : Form
             _services.Items.Clear();
             _autoServices.Checked = true;
             _restore.Checked = false;
-            _refreshAfterWake.Checked = true;
-            _refreshAfterWake.Enabled = false;
             _servicesGroup.Enabled = enabled;
         }
         finally
@@ -595,8 +580,7 @@ internal sealed class SettingsForm : Form
         }
 
         var saved = (SavedDevice)_servicesItem.Tag!;
-        _servicesItem.Tag = saved with { RestoreAtStartup = _restore.Checked, RefreshAfterWake = _refreshAfterWake.Checked };
-        _refreshAfterWake.Enabled = _restore.Checked;
+        _servicesItem.Tag = saved with { RestoreAtStartup = _restore.Checked };
         if (_restore.Checked)
         {
             _servicesItem.Checked = true; // restoring a device implies showing it in the menu

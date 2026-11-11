@@ -361,7 +361,7 @@
     <value>идентификация устройства</value>
   </data>
   <data name="RestoreAtStartupNote" xml:space="preserve">
-    <value>В том числе на экране входа Windows. Если устройство забрал другой хост, пара создаётся заново без диалога. Нужна фоновая служба. Обновление подключения помогает, если после включения или сна экран входа не реагирует на клавиатуру.</value>
+    <value>В том числе на экране входа Windows. Если устройство забрал другой хост, пара создаётся заново без диалога. Нужна фоновая служба.</value>
   </data>
   <data name="ResultNoMicrophone" xml:space="preserve">
     <value>«{0}» подключено, но микрофон не вернулся. Попробуйте ещё раз или выключите и включите устройство.</value>
@@ -383,8 +383,5 @@
   </data>
   <data name="AudioRestartFailed" xml:space="preserve">
     <value>Не удалось перезапустить звук Windows: {0}</value>
-  </data>
-  <data name="RefreshAfterWake" xml:space="preserve">
-    <value>Обновлять подключение после включения и сна (ввод замирает на несколько секунд)</value>
   </data>
 </root>
