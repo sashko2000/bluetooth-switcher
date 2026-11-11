@@ -13,6 +13,8 @@ internal enum ServiceTrigger
     Resume,
     DisplayOn,
     Request,
+    /// <summary>The session was locked or the user signed out: a sign-in screen follows.</summary>
+    Lock,
 }
 
 /// <summary>
@@ -122,6 +124,10 @@ internal static class ServiceHost
                 else if (eventType == WtsSessionUnlock)
                 {
                     _service?.OnTrigger(ServiceTrigger.Unlock);
+                }
+                else if (eventType is 6 or 7) // logoff, lock
+                {
+                    _service?.OnTrigger(ServiceTrigger.Lock);
                 }
 
                 break;

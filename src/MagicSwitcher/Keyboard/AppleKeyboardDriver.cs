@@ -176,6 +176,45 @@ internal static class AppleKeyboardDriver
     /// so every keyboard that uses it is restarted right away (pnputil /restart-device).
     /// </summary>
     /// <returns>true if at least one keyboard was restarted, i.e. the new behavior is already active.</returns>
+    public enum RestartResult
+    {
+        /// <summary>No keyboard uses the driver (or none to restart): the setting applies when one starts.</summary>
+        NoDevice,
+        Restarted,
+        /// <summary>pnputil could not finish the restart ("System reboot is needed"); the keyboard may be left without HID.</summary>
+        RebootRequired,
+    }
+
+    /// <summary>Writes the top row setting only (must be elevated). The driver reads it when the keyboard starts.</summary>
+    public static void WriteMediaKeysByDefault(bool media)
+    {
+        using var key = Registry.LocalMachine.OpenSubKey(ServiceKey, writable: true)
+            ?? throw new InvalidOperationException("The Apple keyboard driver is not installed.");
+        key.SetValue(FnBehaviorValue, media ? 1 : 0, RegistryValueKind.DWord);
+    }
+
+    /// <summary>Restarts every keyboard that uses the driver, so it reads the setting again (must be elevated).</summary>
+    public static async Task<RestartResult> RestartKeyboardsAsync(CancellationToken ct = default)
+    {
+        var devices = FindDevicesUsingDriver();
+        string pnputil = Path.Combine(Environment.SystemDirectory, "pnputil.exe");
+        var result = RestartResult.NoDevice;
+        foreach (var device in devices)
+        {
+            int code = await Elevation.RunAsAdminAsync(pnputil, $"/restart-device \"{device}\"", ct);
+            if (code == ErrorSuccessRebootRequired)
+            {
+                result = RestartResult.RebootRequired;
+            }
+            else if (code == 0 && result == RestartResult.NoDevice)
+            {
+                result = RestartResult.Restarted;
+            }
+        }
+
+        return result;
+    }
+
     public static async Task<bool> SetMediaKeysByDefaultAsync(bool media, CancellationToken ct = default)
     {
         int value = media ? 1 : 0;
@@ -195,7 +234,7 @@ internal static class AppleKeyboardDriver
             foreach (var device in devices)
             {
                 int code = await Elevation.RunAsAdminAsync(pnputil, $"/restart-device \"{device}\"", ct);
-                restarted |= code is 0 or ErrorSuccessRebootRequired;
+                restarted |= code == 0; // 3010: the restart did not complete, it applies after a reboot
             }
 
             return restarted;

@@ -32,6 +32,7 @@ internal sealed class SettingsForm : Form
     private readonly Label _appleStatus;
     private readonly Button _appleInstall;
     private readonly ComboBox _appleFnMode;
+    private readonly Label _appleFnNote;
     private readonly GroupBox _appleGroup;
     private bool _updatingAppleFn;
 
@@ -241,6 +242,9 @@ internal sealed class SettingsForm : Form
         appleLayout.Controls.Add(_appleStatus, 1, 1);
         appleLayout.Controls.Add(new Label { Text = Strings.AppleFnLabel, AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
         appleLayout.Controls.Add(_appleFnMode, 1, 2);
+        _appleFnNote = new Label { Text = Strings.AppleFnSignInNote, AutoSize = true, ForeColor = SystemColors.GrayText, Margin = new Padding(3, 3, 3, 0) };
+        appleLayout.Controls.Add(_appleFnNote, 0, 3);
+        appleLayout.SetColumnSpan(_appleFnNote, 2);
 
         _appleGroup = new GroupBox
         {
@@ -308,6 +312,7 @@ internal sealed class SettingsForm : Form
             hint.MaximumSize = new Size(width, 0);
             _servicesNote.MaximumSize = new Size(Math.Max(100, width - 20), 0);
             _appleInfo.MaximumSize = new Size(Math.Max(100, width - 20), 0);
+            _appleFnNote.MaximumSize = new Size(Math.Max(100, width - 20), 0);
             _appleStatus.MaximumSize = new Size(Math.Max(100, width - 260), 0);
             _serviceInfo.MaximumSize = new Size(Math.Max(100, width - 20), 0);
             _serviceStatus.MaximumSize = new Size(Math.Max(100, width - 320), 0);

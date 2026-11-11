@@ -21,6 +21,13 @@ internal sealed class BluetoothService
     private System.Threading.Timer? _fnTimer;
     private ServiceConfig _config = new();
 
+    /// <summary>
+    /// A user is signed in and the session is unlocked. Only then the Apple keyboard top row gets the user's choice;
+    /// on the sign-in and lock screens the driver keeps its default (media keys), because in the F1–F12 mode the driver
+    /// can lose the release of Delete made with Fn+Backspace, and after Ctrl+Option+Fn+Backspace no keyboard types there.
+    /// </summary>
+    private volatile bool _sessionActive;
+
     public static string ConfigPath { get; } = Path.Combine(AppPaths.MachineDataDirectory, "service.json");
 
     public void Start()
@@ -45,6 +52,16 @@ internal sealed class BluetoothService
             return;
         }
 
+        if (trigger is ServiceTrigger.Logon or ServiceTrigger.Unlock or ServiceTrigger.Lock)
+        {
+            _sessionActive = trigger != ServiceTrigger.Lock;
+            _ = EnsureAppleFnModeAsync(wait: true);
+            if (trigger == ServiceTrigger.Lock)
+            {
+                return; // nothing to restore
+            }
+        }
+
         _ = Task.Run(() =>
         {
             try
@@ -61,6 +78,21 @@ internal sealed class BluetoothService
     public void Stop()
     {
         _fnTimer?.Dispose();
+
+        // Shutting down (or the service stops): the next sign-in screen should start the keyboard in the driver's default.
+        if (_config.AppleMediaKeys == false && AppleKeyboardDriver.MediaKeysByDefault == false)
+        {
+            try
+            {
+                AppleKeyboardDriver.WriteMediaKeysByDefault(true);
+                Log.Info("Apple keyboard top row: default (media keys) for the next sign-in screen");
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Failed to reset the Apple keyboard top row", ex);
+            }
+        }
+
         _stopping.Cancel();
         _guard?.Dispose();
         try
@@ -88,6 +120,7 @@ internal sealed class BluetoothService
                     .Take(MaxDevices)
                     .ToList();
                 _config.Devices = devices;
+                _sessionActive = true; // the tray app runs: a user is signed in
                 if (request.AppleMediaKeys is { } media)
                 {
                     _config.AppleMediaKeys = media;
@@ -137,19 +170,10 @@ internal sealed class BluetoothService
             case ServiceCommands.AppleFn:
             {
                 Log.Info($"Request: Apple keyboard media keys by default = {request.Media}");
-                bool restarted;
-                await _fnGate.WaitAsync(ct);
-                try
-                {
-                    restarted = await AppleKeyboardDriver.SetMediaKeysByDefaultAsync(request.Media, ct);
-                    _config.AppleMediaKeys = request.Media; // remembered, so it can be re-applied after the driver resets it
-                    SaveConfig(_config);
-                }
-                finally
-                {
-                    _fnGate.Release();
-                }
-
+                _sessionActive = true; // asked from the tray app: a user is signed in
+                _config.AppleMediaKeys = request.Media; // remembered, so it can be re-applied after the driver resets it
+                SaveConfig(_config);
+                bool restarted = await EnsureAppleFnModeAsync(wait: true) == true;
                 return ServiceResponse.Success(restarted ? 1 : 0);
             }
 
@@ -184,31 +208,89 @@ internal sealed class BluetoothService
         }
     }
 
-    /// <summary>Re-applies the Apple keyboard top row behavior if the driver's registry value no longer matches it.</summary>
-    private async Task EnsureAppleFnModeAsync()
+    /// <summary>
+    /// Makes the driver's top row setting match the current state: the user's choice while a user session is active,
+    /// the driver's default (media keys) on the sign-in and lock screens. Also re-applies it after the driver's INF
+    /// reset it (whenever Windows installs the keyboard again). Returns true if a keyboard was restarted,
+    /// false if only the setting was written, null if nothing had to change.
+    /// </summary>
+    private async Task<bool?> EnsureAppleFnModeAsync(bool wait = false)
     {
-        if (_config.AppleMediaKeys is not { } wanted || !await _fnGate.WaitAsync(0))
+        if (_config.AppleMediaKeys is not { } choice)
         {
-            return;
+            return null;
+        }
+
+        if (wait)
+        {
+            await _fnGate.WaitAsync(_stopping.Token);
+        }
+        else if (!await _fnGate.WaitAsync(0))
+        {
+            return null;
         }
 
         try
         {
-            if (AppleKeyboardDriver.MediaKeysByDefault is { } current && current != wanted)
+            bool wanted = _sessionActive ? choice : true;
+            if (AppleKeyboardDriver.MediaKeysByDefault is not { } current || current == wanted)
             {
-                Log.Info($"Apple keyboard top row was reset by the driver (media keys = {current}): applying media keys = {wanted}");
-                bool restarted = await AppleKeyboardDriver.SetMediaKeysByDefaultAsync(wanted, _stopping.Token);
-                Log.Info($"Apple keyboard top row re-applied, keyboard restarted: {restarted}");
+                return null;
             }
+
+            AppleKeyboardDriver.WriteMediaKeysByDefault(wanted);
+            string reason = _sessionActive ? "user session" : "sign-in/lock screen";
+            var guarded = _guard?.Devices ?? [];
+            var connected = guarded.Where(d => NativeBluetooth.GetState(d.Address).Connected).ToList();
+            if (guarded.Count > 0 && connected.Count == 0)
+            {
+                // No restart: the driver reads the value when the keyboard connects.
+                Log.Info($"Apple keyboard top row: media keys = {wanted} ({reason}); the keyboard is not connected, applies when it connects");
+                return false;
+            }
+
+            var result = await AppleKeyboardDriver.RestartKeyboardsAsync(_stopping.Token);
+            Log.Info($"Apple keyboard top row: media keys = {wanted} ({reason}), keyboard restart: {result}");
+            foreach (var device in connected)
+            {
+                await EnsureHidAfterRestartAsync(device);
+            }
+
+            return result != AppleKeyboardDriver.RestartResult.NoDevice;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Log.Error("Failed to re-apply the Apple keyboard top row behavior", ex);
+            Log.Error("Failed to apply the Apple keyboard top row behavior", ex);
+            return null;
         }
         finally
         {
             _fnGate.Release();
         }
+    }
+
+    /// <summary>
+    /// A restarted keyboard may come back connected but without HID collections (pnputil: "System reboot is needed"):
+    /// it does not type then. Reinstalling HID (like "Reconnect" in the tray) brings it back.
+    /// </summary>
+    private async Task EnsureHidAfterRestartAsync(GuardedDevice device)
+    {
+        for (int i = 0; i < 15; i++)
+        {
+            await Task.Delay(1000, _stopping.Token);
+            if (NativeBluetooth.GetState(device.Address).Connected && await Task.Run(() => PairingGuard.CountHid(device)) is > 0)
+            {
+                return;
+            }
+        }
+
+        if (!NativeBluetooth.GetState(device.Address).Connected)
+        {
+            return; // disconnected: the guard or the next connection takes care of it
+        }
+
+        int error = await Task.Run(() => NativeBluetooth.EnableServices(device.Address, device.Services));
+        Log.Info($"[{device.Name}] no HID after the keyboard restart: services reinstalled -> {error}");
     }
 
     private static ServiceConfig LoadConfig()

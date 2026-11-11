@@ -97,7 +97,12 @@ top row do not work. Apple's Boot Camp keyboard driver fixes that, and the app c
   (the driver's `OSXFnBehavior` setting, Mac behavior after installation). The driver reads it only when it starts,
   so the app restarts the keyboard right away to apply the change (`pnputil /restart-device`).
   The driver's installer resets this setting to Mac behavior whenever Windows installs the keyboard again — e.g. after it
-  was paired again — so the background service remembers your choice and re-applies it within half a minute.
+  was paired again — so the background service remembers your choice and re-applies it.
+- On the **sign-in and lock screens** the service keeps the driver's default (media keys) and applies your choice only
+  after you sign in or unlock (the keyboard restarts for a second). In the F1–F12 mode the driver can lose the release
+  of Delete pressed as **Fn+Backspace**: after Ctrl+Option+Fn+Backspace Windows then thinks Delete is still held and no
+  keyboard types on the sign-in screen until someone signs in. If a keyboard restart leaves it without HID devices
+  (pnputil: “System reboot is needed”), the service reconnects it.
 - The lock key (top right on 2021 models) is not handled by the driver.
 - To remove the driver: Device Manager → the keyboard (“Apple Keyboard”) → Uninstall device → check
   “Attempt to remove the driver for this device”, then reconnect the keyboard.

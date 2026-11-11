@@ -392,20 +392,22 @@ internal sealed class PairingGuard : IDisposable
 
         try
         {
-            var saved = new SavedDevice { Address = device.Address, Name = device.Name };
-            var containerId = BatteryReader.TryGetContainerIdAsync(saved).WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
-            if (containerId is not { } id)
-            {
-                return "HID ? (no container)";
-            }
-
-            int count = HidNative.FindCollectionPathsAsync(id).WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult().Count;
-            return $"HID collections {count}";
+            return CountHid(device) is { } count ? $"HID collections {count}" : "HID ? (no container)";
         }
         catch (Exception ex)
         {
             return $"HID ? ({ex.GetType().Name})";
         }
+    }
+
+    /// <summary>Number of HID collections of the device; null if its PnP container is not found. Blocking.</summary>
+    public static int? CountHid(GuardedDevice device)
+    {
+        var saved = new SavedDevice { Address = device.Address, Name = device.Name };
+        var containerId = BatteryReader.TryGetContainerIdAsync(saved).WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+        return containerId is { } id
+            ? HidNative.FindCollectionPathsAsync(id).WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult().Count
+            : null;
     }
 
     private static string Name(GuardedDevice device) =>

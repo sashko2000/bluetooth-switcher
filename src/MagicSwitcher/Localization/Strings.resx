@@ -384,4 +384,7 @@
   <data name="AudioRestartFailed" xml:space="preserve">
     <value>Could not restart Windows audio: {0}</value>
   </data>
+  <data name="AppleFnSignInNote" xml:space="preserve">
+    <value>On the sign-in and lock screens the top row always works as media keys: in the F1–F12 mode Apple’s driver can lose the release of Delete pressed as Fn+Backspace, and then no keyboard types there after Ctrl+Option+Fn+Backspace. Your choice is applied after you sign in (with the background service).</value>
+  </data>
 </root>

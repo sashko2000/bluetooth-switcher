@@ -384,4 +384,7 @@
   <data name="AudioRestartFailed" xml:space="preserve">
     <value>Не удалось перезапустить звук Windows: {0}</value>
   </data>
+  <data name="AppleFnSignInNote" xml:space="preserve">
+    <value>На экранах входа и блокировки верхний ряд всегда работает как медиаклавиши: в режиме F1–F12 драйвер Apple может потерять отпускание Delete, нажатой как Fn+Backspace, и после Ctrl+Option+Fn+Backspace там не печатает ни одна клавиатура. Ваш выбор применяется после входа в систему (при установленной фоновой службе).</value>
+  </data>
 </root>
