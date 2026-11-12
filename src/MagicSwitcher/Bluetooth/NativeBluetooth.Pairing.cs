@@ -26,6 +26,7 @@ internal readonly record struct DeviceState(bool Known, bool Connected, bool Rem
 internal static partial class NativeBluetooth
 {
     public const int ErrorTimeout = 258; // WAIT_TIMEOUT: the device did not answer (asleep or connected elsewhere)
+    public const int ErrorNotAuthenticated = 1244; // the device refused the pairing
 
     public static DeviceState GetState(ulong address)
     {

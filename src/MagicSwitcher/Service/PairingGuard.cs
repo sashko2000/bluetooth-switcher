@@ -196,7 +196,8 @@ internal sealed class PairingGuard : IDisposable
             {
                 knocks++;
                 session.Report(knocks == 1 ? "Connecting…" : $"Connecting… (attempt {knocks})");
-                if (await Task.Run(() => Knock(device, state, knocks), ct))
+                // Force only when Windows shows it connected while it does not type: then it is reachable for sure.
+                if (await KnockAsync(device, state, knocks, force: session.ForceFirstKnock && knocks == 1 && state.Connected, ct))
                 {
                     AfterPairing?.Invoke();
                 }
@@ -211,34 +212,99 @@ internal sealed class PairingGuard : IDisposable
     }
 
     /// <summary>One attempt (tested with Apple Magic Keyboard, see tools/PairingProbe in the history).</summary>
-    /// <summary>Returns true if the device was paired again.</summary>
-    private static bool Knock(GuardedDevice device, DeviceState state, int attempt)
+    /// <summary>
+    /// One attempt. Returns true if the device was paired again.
+    /// <para>
+    /// Windows has the key but the device is not connected: reinstalling HID makes Windows connect — but if that first
+    /// HID connection fails, Windows removes the pairing (HidBth event 4). That is what we want when another host took
+    /// the keyboard (it rejects our key, and then it is paired again), but a sleeping keyboard would lose a perfectly good
+    /// pairing and then refuse a new one until it is turned off and on. So first page the device without touching the
+    /// pairing (an uncached SDP query): a device that answers but still does not connect is awake and rejects us —
+    /// only then reinstall HID. A device that does not answer is asleep, off or away: it reconnects by itself when it wakes.
+    /// </para>
+    /// </summary>
+    private static async Task<bool> KnockAsync(GuardedDevice device, DeviceState state, int attempt, bool force, CancellationToken ct)
     {
         string name = Name(device);
         if (state.Known && state.Paired)
         {
-            // Windows has the key but the device is not connected: reinstalling HID makes Windows connect.
-            // If the device was used with another host, it rejects the key and Windows removes the device;
-            // the next attempt then pairs again.
-            int error = NativeBluetooth.EnableServices(device.Address, device.Services);
-            Log.Info($"[Guard] '{name}' knock {attempt} ({state}): services reinstalled -> {error}");
+            if (!force)
+            {
+                bool? answered = await PageAsync(device.Address, ct);
+                if (answered != true)
+                {
+                    Log.Info($"[Guard] '{name}' knock {attempt} ({state}): no answer to a page " +
+                             $"({(answered is null ? "unknown" : "asleep, off or away")}): keeping the pairing, waiting for it to wake");
+                    return false;
+                }
+
+                // Answered: give Windows a moment to bring HID up by itself.
+                for (int i = 0; i < 10 && !NativeBluetooth.GetState(device.Address).IsWorking; i++)
+                {
+                    await Task.Delay(1000, ct);
+                }
+
+                if (NativeBluetooth.GetState(device.Address).IsWorking)
+                {
+                    Log.Info($"[Guard] '{name}' knock {attempt}: answered a page and connected");
+                    return false;
+                }
+            }
+
+            // Awake but not connecting with our key (or the tray says it does not type): reinstall HID.
+            // If the device rejects our key, Windows removes the pairing and the next attempt pairs again.
+            int error = await Task.Run(() => NativeBluetooth.EnableServices(device.Address, device.Services), ct);
+            Log.Info($"[Guard] '{name}' knock {attempt} ({state}): {(force ? "requested" : "answered but did not connect")}, services reinstalled -> {error}");
             return false;
         }
 
         // No key (or Windows forgot the device): pair with bonding; our callback confirms the request.
-        int pairError = NativeBluetooth.PairWithBonding(device.Address);
-        Log.Info($"[Guard] '{name}' knock {attempt} ({state}): pairing -> {pairError}" +
-                 (pairError == NativeBluetooth.ErrorTimeout ? " (no answer: the device is asleep, off or busy with another host)" : ""));
+        int pairError = await Task.Run(() => NativeBluetooth.PairWithBonding(device.Address), ct);
+        Log.Info($"[Guard] '{name}' knock {attempt} ({state}): pairing -> {pairError}" + pairError switch
+        {
+            NativeBluetooth.ErrorTimeout => " (no answer: the device is asleep, off or busy with another host)",
+            NativeBluetooth.ErrorNotAuthenticated => " (refused: the device accepts a new pairing only for a while after it is turned on)",
+            _ => "",
+        });
         if (pairError == NativeBluetooth.ErrorSuccess)
         {
             // Pairing stores the key but does not install the HID service; without it the keyboard cannot connect.
-            Thread.Sleep(1000);
+            await Task.Delay(1000, ct);
             int error = NativeBluetooth.EnableServices(device.Address, device.Services);
             Log.Info($"[Guard] '{name}' services enabled after pairing -> {error}: {NativeBluetooth.GetState(device.Address)}");
             return true;
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Pages the device with an uncached SDP query, which needs no pairing and does not change it.
+    /// true: it answered; false: no answer; null: could not tell.
+    /// </summary>
+    private static async Task<bool?> PageAsync(ulong address, CancellationToken ct)
+    {
+        try
+        {
+            using var device = await Windows.Devices.Bluetooth.BluetoothDevice.FromBluetoothAddressAsync(address).AsTask(ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
+            if (device is null)
+            {
+                return null;
+            }
+
+            var result = await device.GetRfcommServicesAsync(Windows.Devices.Bluetooth.BluetoothCacheMode.Uncached)
+                .AsTask(ct).WaitAsync(TimeSpan.FromSeconds(10), ct);
+            return result.Error == Windows.Devices.Bluetooth.BluetoothError.Success;
+        }
+        catch (TimeoutException)
+        {
+            return false;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Info($"[Guard] Page failed: {ex.GetType().Name}: {ex.Message}");
+            return null;
+        }
     }
 
     /// <summary>Called on the message loop thread when a guarded device asks to pair.</summary>

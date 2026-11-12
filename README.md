@@ -63,7 +63,11 @@ The optional Windows service fixes that. Install it in **Settings → Background
 - reacts to events: Windows startup, sign-in, unlock, wake from sleep, the display turning on, and **Connect** in the tray;
 - first gives the keyboard time to reconnect by itself (45 seconds after startup or wake: knocking earlier breaks a
   connection that is coming up and makes Windows drop the key), then “knocks” every 20–30 seconds for up to 10 minutes;
-- if Windows still has the key, reinstalls the HID service; if the key is gone (or Windows forgot the device),
+- if Windows still has the key, first pages the keyboard without touching the pairing (an uncached SDP query). Only if it
+  answers but still does not connect — it is awake and rejects the key, e.g. after a phone used it — the service
+  reinstalls the HID service. Reinstalling HID while the keyboard sleeps would make Windows remove a good pairing
+  (when the first HID connection fails, Windows deletes the link key); a sleeping keyboard reconnects by itself when you
+  press a key. If the key is gone (or Windows forgot the device),
   pairs again with bonding (`BluetoothAuthenticateDeviceEx`), answers the pairing request itself
   (`BluetoothRegisterForAuthenticationEx`) so no dialog appears, and enables the HID service;
 - keeps watching until the keyboard has worked for a minute without interruption: right after startup it may connect
