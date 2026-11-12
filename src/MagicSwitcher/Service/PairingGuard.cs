@@ -24,6 +24,9 @@ namespace MagicSwitcher.Service;
 internal sealed class PairingGuard : IDisposable
 {
     private const uint WmQuit = 0x0012;
+
+    /// <summary>How often to try pairing while the device has no pairing.</summary>
+    private static readonly TimeSpan PairingInterval = TimeSpan.FromSeconds(5);
     private const uint WmApp = 0x8000;
 
     private readonly Thread _loop;
@@ -192,6 +195,18 @@ internal sealed class PairingGuard : IDisposable
                 Log.Info($"[Guard] '{Name(device)}' stopped working again ({state}): keep restoring");
             }
 
+            bool unpaired = !(state.Known && state.Paired);
+            if (unpaired)
+            {
+                // A failed pairing attempt changes nothing, so try often: the keyboard accepts a new pairing only for
+                // a short while after it is turned on — and then it shows up connected without a pairing: try right away.
+                var soon = state.Connected ? DateTime.UtcNow : session.LastKnock + PairingInterval;
+                if (soon < session.NextKnock)
+                {
+                    session.NextKnock = soon;
+                }
+            }
+
             if (DateTime.UtcNow >= session.NextKnock)
             {
                 knocks++;
@@ -202,10 +217,11 @@ internal sealed class PairingGuard : IDisposable
                     AfterPairing?.Invoke();
                 }
 
+                session.LastKnock = DateTime.UtcNow;
                 session.NextKnock = DateTime.UtcNow + session.Plan.Interval;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(3), ct);
+            await Task.Delay(TimeSpan.FromSeconds(unpaired ? 1 : 3), ct);
         }
 
         return NativeBluetooth.GetState(device.Address).IsWorking;
@@ -507,6 +523,8 @@ internal sealed class PairingGuard : IDisposable
         public Plan Plan { get; private set; } = plan;
         public DateTime Deadline { get; private set; } = DateTime.UtcNow + plan.Duration;
         public DateTime NextKnock { get; set; } = DateTime.UtcNow + plan.InitialWait;
+
+        public DateTime LastKnock { get; set; } = DateTime.MinValue;
 
         /// <summary>Knock once even if Windows reports the device as working (the tray says it does not type).</summary>
         public bool ForceFirstKnock { get; set; }

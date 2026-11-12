@@ -197,7 +197,7 @@ internal sealed class BluetoothService
     {
         try
         {
-            foreach (int seconds in new[] { 3, 5, 10, 20 })
+            foreach (int seconds in new[] { 5, 5, 10, 20 }) // 5, 10, 20 and 40 seconds after pairing
             {
                 await Task.Delay(TimeSpan.FromSeconds(seconds), _stopping.Token);
                 await EnsureAppleFnModeAsync();
@@ -249,6 +249,24 @@ internal sealed class BluetoothService
                 return false;
             }
 
+            // A keyboard without HID collections is still starting (e.g. just paired): its driver reads the value when it
+            // starts, and restarting it now would only delay that.
+            var typing = new List<GuardedDevice>();
+            foreach (var device in connected)
+            {
+                if (await Task.Run(() => PairingGuard.CountHid(device)) is > 0)
+                {
+                    typing.Add(device);
+                }
+            }
+
+            if (connected.Count > 0 && typing.Count == 0)
+            {
+                Log.Info($"Apple keyboard top row: media keys = {wanted} ({reason}); the keyboard is still starting, applies when it starts");
+                return false;
+            }
+
+            connected = typing;
             var result = await AppleKeyboardDriver.RestartKeyboardsAsync(_stopping.Token);
             Log.Info($"Apple keyboard top row: media keys = {wanted} ({reason}), keyboard restart: {result}");
             foreach (var device in connected)
