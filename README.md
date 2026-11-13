@@ -129,8 +129,10 @@ When the level drops to the configured threshold (15% by default, 0 turns it off
 On some laptops the audio driver occasionally gets stuck: the speakers, the microphone and Bluetooth audio stop working
 at once (on Intel Smart Sound laptops Bluetooth audio goes through the same audio DSP), turning the speaker off and on does
 not help, and a reboot does. **Restart Windows audio** in the tray menu restarts the Windows audio services
-(`AudioEndpointBuilder`, `Audiosrv` and the services that depend on them) and then reconnects the selected speakers and
-headsets that are connected. It goes through the background service (no prompt) or asks for a UAC confirmation.
+(`AudioEndpointBuilder`, `Audiosrv` and the services that depend on them) and, while they are stopped, the audio DSP's
+Bluetooth devices (“Intel Smart Sound Technology for Bluetooth Audio / LE Audio”: when that path gets stuck, a speaker's
+microphone does not come back even after reconnecting all its audio profiles). Then it reconnects the selected speakers
+and headsets that are connected. It goes through the background service (no prompt) or asks for a UAC confirmation.
 
 ## Other devices and how connecting works
 

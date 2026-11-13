@@ -373,7 +373,7 @@
     <value>Перезапуск звука Windows…</value>
   </data>
   <data name="TrayRestartAudioTooltip" xml:space="preserve">
-    <value>Если звук или микрофон пропали везде: перезапускает службы звука Windows и переподключает выбранные колонки и гарнитуры.</value>
+    <value>Если пропал звук или микрофон: перезапускает службы звука Windows и Bluetooth-звук звукового процессора (Intel Smart Sound), затем переподключает выбранные колонки и гарнитуры.</value>
   </data>
   <data name="AudioRestarted" xml:space="preserve">
     <value>Звук Windows перезапущен.</value>

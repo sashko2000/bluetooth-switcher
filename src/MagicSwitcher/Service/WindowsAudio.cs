@@ -41,6 +41,9 @@ internal static class WindowsAudio
                     StopWithDependents(scm, name, stopped);
                 }
 
+                // While the services are stopped, restart the audio DSP's Bluetooth endpoints (see RestartBluetoothAudioDevices).
+                RestartBluetoothAudioDevices();
+
                 // Start in reverse order of stopping; also start the main services if they were not running.
                 var toStart = Enumerable.Reverse(stopped).Concat(Services).Distinct(StringComparer.OrdinalIgnoreCase);
                 foreach (var name in toStart)
@@ -62,6 +65,132 @@ internal static class WindowsAudio
             return ex.NativeErrorCode;
         }
     }
+
+    /// <summary>
+    /// On Intel Smart Sound laptops Bluetooth audio (including a headset's or speaker's Hands-Free microphone) is
+    /// processed by the audio DSP through "Intel Smart Sound Technology for Bluetooth Audio" / "… LE Audio" devices.
+    /// When that path gets stuck, the microphone does not come back even after reconnecting all audio profiles;
+    /// restarting these devices resets it (otherwise only removing the speaker or a reboot helps).
+    /// </summary>
+    private static void RestartBluetoothAudioDevices()
+    {
+        List<(string Id, string Name)> devices;
+        try
+        {
+            devices = FindMediaDevices(name => name.Contains("Smart Sound", StringComparison.OrdinalIgnoreCase)
+                                               && name.Contains("Bluetooth", StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to list the Bluetooth audio devices", ex);
+            return;
+        }
+
+        string pnputil = Path.Combine(Environment.SystemDirectory, "pnputil.exe");
+        foreach (var (id, name) in devices)
+        {
+            try
+            {
+                using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(pnputil, $"/restart-device \"{id}\"")
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                });
+                if (process is null)
+                {
+                    continue;
+                }
+
+                process.StandardOutput.ReadToEnd();
+                bool exited = process.WaitForExit(30000);
+                Log.Info($"Restarted '{name}' -> {(exited ? process.ExitCode.ToString() : "timeout")}");
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Failed to restart '{name}'", ex);
+            }
+        }
+    }
+
+    /// <summary>Present devices of the Media class (sound, video and game controllers) whose name matches.</summary>
+    private static List<(string Id, string Name)> FindMediaDevices(Func<string, bool> match)
+    {
+        var mediaClass = new Guid("4D36E96C-E325-11CE-BFC1-08002BE10318");
+        var result = new List<(string, string)>();
+        var set = SetupDiGetClassDevs(ref mediaClass, null, IntPtr.Zero, DigcfPresent);
+        if (set == new IntPtr(-1))
+        {
+            throw new Win32Exception(Marshal.GetLastPInvokeError());
+        }
+
+        try
+        {
+            var data = new SP_DEVINFO_DATA { cbSize = (uint)Marshal.SizeOf<SP_DEVINFO_DATA>() };
+            var buffer = new char[1024];
+            for (uint i = 0; SetupDiEnumDeviceInfo(set, i, ref data); i++)
+            {
+                string? name = GetProperty(set, ref data, SpdrpFriendlyName, buffer) ?? GetProperty(set, ref data, SpdrpDeviceDesc, buffer);
+                if (name is null || !match(name))
+                {
+                    continue;
+                }
+
+                if (SetupDiGetDeviceInstanceId(set, ref data, buffer, buffer.Length, out _))
+                {
+                    result.Add((new string(buffer).TrimEnd('\0').Split('\0')[0], name));
+                }
+            }
+        }
+        finally
+        {
+            SetupDiDestroyDeviceInfoList(set);
+        }
+
+        return result;
+    }
+
+    private static string? GetProperty(IntPtr set, ref SP_DEVINFO_DATA data, uint property, char[] buffer)
+    {
+        Array.Clear(buffer);
+        return SetupDiGetDeviceRegistryProperty(set, ref data, property, out _, buffer, (uint)(buffer.Length * 2), out _)
+            ? new string(buffer).Split('\0')[0]
+            : null;
+    }
+
+    private const uint DigcfPresent = 0x2;
+    private const uint SpdrpDeviceDesc = 0x0;
+    private const uint SpdrpFriendlyName = 0xC;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct SP_DEVINFO_DATA
+    {
+        public uint cbSize;
+        public Guid ClassGuid;
+        public uint DevInst;
+        public IntPtr Reserved;
+    }
+
+    [DllImport("setupapi.dll", EntryPoint = "SetupDiGetClassDevsW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr SetupDiGetClassDevs(ref Guid classGuid, string? enumerator, IntPtr hwndParent, uint flags);
+
+    [DllImport("setupapi.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetupDiEnumDeviceInfo(IntPtr deviceInfoSet, uint memberIndex, ref SP_DEVINFO_DATA deviceInfoData);
+
+    [DllImport("setupapi.dll", EntryPoint = "SetupDiGetDeviceRegistryPropertyW", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetupDiGetDeviceRegistryProperty(IntPtr deviceInfoSet, ref SP_DEVINFO_DATA deviceInfoData,
+        uint property, out uint propertyRegDataType, [Out] char[] propertyBuffer, uint propertyBufferSize, out uint requiredSize);
+
+    [DllImport("setupapi.dll", EntryPoint = "SetupDiGetDeviceInstanceIdW", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetupDiGetDeviceInstanceId(IntPtr deviceInfoSet, ref SP_DEVINFO_DATA deviceInfoData,
+        [Out] char[] deviceInstanceId, int deviceInstanceIdSize, out int requiredSize);
+
+    [DllImport("setupapi.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetupDiDestroyDeviceInfoList(IntPtr deviceInfoSet);
 
     private static void StopWithDependents(IntPtr scm, string name, List<string> stopped)
     {

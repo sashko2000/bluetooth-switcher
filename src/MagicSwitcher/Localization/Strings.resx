@@ -373,7 +373,7 @@
     <value>Restarting Windows audio…</value>
   </data>
   <data name="TrayRestartAudioTooltip" xml:space="preserve">
-    <value>When sound or the microphone stops working everywhere: restarts the Windows audio services and reconnects the selected speakers and headsets.</value>
+    <value>When sound or the microphone stops working: restarts the Windows audio services and the Bluetooth audio of the audio processor (Intel Smart Sound), then reconnects the selected speakers and headsets.</value>
   </data>
   <data name="AudioRestarted" xml:space="preserve">
     <value>Windows audio has been restarted.</value>
