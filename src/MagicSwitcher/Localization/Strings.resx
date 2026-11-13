@@ -462,4 +462,7 @@
   <data name="TrayRestoreMicrophone" xml:space="preserve">
     <value>Restore the microphone of “{0}”</value>
   </data>
+  <data name="PullHint" xml:space="preserve">
+    <value>If the keyboard is asleep, press a key. If it is connected to another device, turn it off and on now.</value>
+  </data>
 </root>

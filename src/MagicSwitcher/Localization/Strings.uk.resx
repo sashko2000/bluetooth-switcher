@@ -462,4 +462,7 @@
   <data name="TrayRestoreMicrophone" xml:space="preserve">
     <value>Повернути мікрофон «{0}»</value>
   </data>
+  <data name="PullHint" xml:space="preserve">
+    <value>Якщо клавіатура спить — натисніть клавішу. Якщо вона підключена до іншого пристрою — вимкніть і ввімкніть її зараз.</value>
+  </data>
 </root>

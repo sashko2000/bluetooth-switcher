@@ -387,6 +387,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         // Pairing again takes longer than a plain connection, and the keyboard may need to be woken up.
         var duration = timeout < TimeSpan.FromSeconds(60) ? TimeSpan.FromSeconds(60) : timeout;
+        if (ServiceInstaller.GetState() == ServiceState.Running)
+        {
+            // Nothing can take a keyboard from a host it is connected to: the user has to help, and soon.
+            Notify(Strings.TrayConnecting(device.DisplayName), Strings.PullHint, ToolTipIcon.Info, force: true);
+        }
+
         ServiceResponse? response;
         try
         {
