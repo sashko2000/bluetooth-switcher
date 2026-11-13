@@ -593,8 +593,12 @@ internal sealed class PairingGuard : IDisposable
     /// </summary>
     private sealed record Plan(TimeSpan InitialWait, TimeSpan Interval, TimeSpan Duration, TimeSpan StableFor)
     {
-        /// <summary>How soon to page again a device that did not answer.</summary>
-        public TimeSpan PageInterval { get; init; } = Interval;
+        /// <summary>
+        /// How soon to page again a device that did not answer. Short for every plan: a page changes nothing, and a
+        /// keyboard that another host took accepts a new pairing only for a short while after it is turned on, so it
+        /// has to be noticed within seconds — also at the sign-in screen.
+        /// </summary>
+        public TimeSpan PageInterval { get; init; } = TimeSpan.FromSeconds(5);
 
         /// <summary>How long a device that answered a page gets to connect by itself before HID is reinstalled.</summary>
         public TimeSpan SelfConnectWait { get; init; } = TimeSpan.FromSeconds(10);
