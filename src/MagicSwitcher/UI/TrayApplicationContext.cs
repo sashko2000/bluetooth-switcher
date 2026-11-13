@@ -400,8 +400,13 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
         catch (Exception ex) when (ex is IOException or TimeoutException)
         {
+            // Do not fall back to reinstalling services here: the service may be in the middle of pairing the keyboard
+            // (or has just paired it), and a reinstall on top of that breaks the new connection.
             Log.Error("The service did not complete the connection", ex);
-            return null;
+            await _monitor.RefreshHidAsync();
+            return _monitor.IsConnected(device) == true
+                ? new ReconnectResult(ReconnectOutcome.Connected, Strings.ResultConnected(device.DisplayName))
+                : new ReconnectResult(ReconnectOutcome.NotConnected, Strings.ResultPullFailed(device.DisplayName));
         }
 
         if (response is null)

@@ -70,6 +70,9 @@ internal static partial class NativeBluetooth
         }
     }
 
+    /// <summary>Makes Windows forget the device and its key (the same as "Remove device" in Settings). Returns a Win32 error.</summary>
+    public static int RemovePairing(ulong address) => BluetoothRemoveDevice(ref address);
+
     /// <summary>Disables and enables the given services (default: HID). Returns the last Win32 error, 0 on success.</summary>
     public static int EnableServices(ulong address, IReadOnlyCollection<Guid>? services)
     {
@@ -291,6 +294,9 @@ internal static partial class NativeBluetooth
 
     [DllImport("bthprops.cpl")]
     private static extern int BluetoothSendAuthenticationResponseEx(IntPtr hRadioIn, ref BLUETOOTH_AUTHENTICATE_RESPONSE pauthResponse);
+
+    [DllImport("bthprops.cpl")]
+    private static extern int BluetoothRemoveDevice(ref ulong pAddress);
 
     [DllImport("bthprops.cpl", CharSet = CharSet.Unicode)]
     private static extern int BluetoothAuthenticateDeviceEx(
