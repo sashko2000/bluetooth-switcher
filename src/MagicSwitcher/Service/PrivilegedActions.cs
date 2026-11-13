@@ -35,7 +35,7 @@ internal static class PrivilegedActions
     }
 
     /// <summary>Tells the service which devices to restore. Returns false if the service is not running.</summary>
-    public static async Task<bool> ConfigureServiceAsync(IEnumerable<SavedDevice> devices, bool? appleMediaKeys)
+    public static async Task<bool> ConfigureServiceAsync(IEnumerable<SavedDevice> devices, bool? appleMediaKeys, List<KeyMapping>? keyMap)
     {
         if (ServiceInstaller.GetState() != ServiceState.Running)
         {
@@ -50,6 +50,7 @@ internal static class PrivilegedActions
                 .Select(d => new GuardedDevice { Address = d.Address, Name = d.DisplayName, Services = ServicesAfterPairing(d) })
                 .ToList(),
             AppleMediaKeys = appleMediaKeys,
+            KeyMap = keyMap,
         };
 
         try
@@ -170,13 +171,15 @@ internal static class PrivilegedActions
     /// <summary>Returns true if a keyboard was restarted (the new behavior is already active).</summary>
     public static async Task<bool> SetAppleMediaKeysByDefaultAsync(bool media)
     {
-        var response = await SendOrNullAsync(new ServiceRequest { Command = ServiceCommands.AppleFn, Media = media }, TimeSpan.FromMinutes(2));
+        // The top row mode (Fn Lock) belongs to the key remapper: the service's helper, or the one in the tray app.
+        var response = await SendOrNullAsync(new ServiceRequest { Command = ServiceCommands.AppleFn, Media = media }, TimeSpan.FromSeconds(30));
         if (response is null)
         {
-            return await AppleKeyboardDriver.SetMediaKeysByDefaultAsync(media); // with a UAC prompt
+            AppleTopRow.Write(AppleTopRow.UserPath, fKeys: !media); // the tray restarts its remapper when settings close
+            return true;
         }
 
-        return response.Ok ? response.Code == 1 : throw new InvalidOperationException(response.Message);
+        return response.Ok ? true : throw new InvalidOperationException(response.Message);
     }
 
     /// <summary>Restarts the Windows audio services: through the service, or with a UAC prompt. Returns a Win32 error code.</summary>

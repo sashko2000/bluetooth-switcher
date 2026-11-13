@@ -51,6 +51,12 @@ internal static class Program
             return ServiceInstaller.UninstallElevated();
         }
 
+        if (Has(args, RemapHelper.HelperArgument))
+        {
+            AppDomain.CurrentDomain.UnhandledException += (_, e) => Log.Error("Unhandled exception", e.ExceptionObject as Exception);
+            return RemapHelper.RunHelper();
+        }
+
         if (Has(args, WindowsAudio.RestartArgument))
         {
             return WindowsAudio.Restart();

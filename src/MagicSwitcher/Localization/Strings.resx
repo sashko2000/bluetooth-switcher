@@ -97,16 +97,16 @@
     <value>Top row keys:</value>
   </data>
   <data name="AppleFnStandard" xml:space="preserve">
-    <value>F1–F12 (media with Fn)</value>
+    <value>F1–F12 (F1, F2 with Fn)</value>
   </data>
   <data name="AppleFnMedia" xml:space="preserve">
     <value>Media keys (F1–F12 with Fn)</value>
   </data>
   <data name="AppleFnAppliedNow" xml:space="preserve">
-    <value>Applied: the keyboard was restarted with the new setting.</value>
+    <value>Applied. Fn+Esc switches it at any time.</value>
   </data>
   <data name="AppleFnApplied" xml:space="preserve">
-    <value>Saved. Reconnect the keyboard from the tray menu (or restart Windows) to apply.</value>
+    <value>Applied. Fn+Esc switches it at any time.</value>
   </data>
   <data name="TrayConnectTooltip" xml:space="preserve">
     <value>Connect the device to this computer</value>
@@ -385,6 +385,39 @@
     <value>Could not restart Windows audio: {0}</value>
   </data>
   <data name="AppleFnSignInNote" xml:space="preserve">
-    <value>On the sign-in and lock screens the top row always works as media keys: in the F1–F12 mode Apple’s driver can lose the release of Delete pressed as Fn+Backspace, and then no keyboard types there after Ctrl+Option+Fn+Backspace. Your choice is applied after you sign in (with the background service).</value>
+    <value>Fn+Esc switches the top row between F-keys and media keys at any time. In the F-keys mode F3–F12 work without Fn; F1 and F2 always need Fn (Apple’s driver keeps the brightness keys to itself). On the sign-in and lock screens the top row sends media keys.</value>
+  </data>
+  <data name="RemapButton" xml:space="preserve">
+    <value>Remap keys…</value>
+  </data>
+  <data name="RemapNone" xml:space="preserve">
+    <value>No keys remapped</value>
+  </data>
+  <data name="RemapTitle" xml:space="preserve">
+    <value>Remap keys of the Apple keyboard</value>
+  </data>
+  <data name="RemapNote" xml:space="preserve">
+    <value>Applies to Apple keyboards only (Bluetooth and USB); other keyboards are not affected. With the background service it works in all windows, including those run as administrator; without it, not in administrator windows. It does not work on the sign-in and lock screens. Changes apply when you save the settings.</value>
+  </data>
+  <data name="RemapNoChange" xml:space="preserve">
+    <value>No change</value>
+  </data>
+  <data name="RemapDisabled" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="RemapReset" xml:space="preserve">
+    <value>Reset all</value>
+  </data>
+  <data name="SideLeft" xml:space="preserve">
+    <value>left</value>
+  </data>
+  <data name="SideRight" xml:space="preserve">
+    <value>right</value>
+  </data>
+  <data name="TopRowNowFKeys" xml:space="preserve">
+    <value>Top row: F1–F12 (Fn+Esc switches)</value>
+  </data>
+  <data name="TopRowNowMedia" xml:space="preserve">
+    <value>Top row: media keys (Fn+Esc switches)</value>
   </data>
 </root>

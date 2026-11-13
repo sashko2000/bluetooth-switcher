@@ -97,19 +97,34 @@ top row do not work. Apple's Boot Camp keyboard driver fixes that, and the app c
   Boot Camp 6.1.14 update from Apple's servers, verifies its SHA-256, extracts the keyboard driver
   (`AppleKeyboardMagic2`, version 6.1.8086.4, which knows the 2021 keyboards, e.g. A2450) and installs it with
   `pnputil`. An internet connection and administrator rights are required. Apple's Boot Camp license terms apply.
-- **Top row keys** lets you choose the default behavior: F1–F12 with media on Fn, or media keys with F1–F12 on Fn
-  (the driver's `OSXFnBehavior` setting, Mac behavior after installation). The driver reads it only when it starts,
-  so the app restarts the keyboard right away to apply the change (`pnputil /restart-device`).
-  The driver's installer resets this setting to Mac behavior whenever Windows installs the keyboard again — e.g. after it
-  was paired again — so the background service remembers your choice and re-applies it.
-- On the **sign-in and lock screens** the service keeps the driver's default (media keys) and applies your choice only
-  after you sign in or unlock (the keyboard restarts for a second). In the F1–F12 mode the driver can lose the release
-  of Delete pressed as **Fn+Backspace**: after Ctrl+Option+Fn+Backspace Windows then thinks Delete is still held and no
-  keyboard types on the sign-in screen until someone signs in. If a keyboard restart leaves it without HID devices
-  (pnputil: “System reboot is needed”), the service reconnects it.
+- **Top row keys** (“Fn Lock”): F-keys or media keys without Fn. **Fn+Esc** switches at any time, and the tray shows
+  which mode is on. The driver itself always stays in its default mode (media keys; F-keys with Fn); MagicSwitcher
+  swaps the keys of the Apple keyboard in your session: the media keys become F7–F12 (the keyboard's consumer-control
+  HID report arrives just before the media key and tells which keyboard it came from), and the Spotlight and dictation
+  keys, which the driver sends as Win+S and Win+C, become F4 and F5. F3 and F6 are F-keys in both modes.
+  **F1 and F2 always need Fn**: the driver keeps the brightness keys to itself, and Windows never sees them.
+- Why not the driver's own setting (`OSXFnBehavior`)? Versions up to 1.3 switched it, but the driver reads it only when
+  the keyboard starts, so every change meant restarting the keyboard (which could leave it without input after sleep),
+  the driver's installer resets it whenever Windows installs the keyboard again, and in its F-keys mode the driver can
+  lose the release of Delete pressed as **Fn+Backspace** — after Ctrl+Option+Fn+Backspace no keyboard types on the
+  sign-in screen. On the sign-in and lock screens the top row sends media keys.
 - The lock key (top right on 2021 models) is not handled by the driver.
 - To remove the driver: Device Manager → the keyboard (“Apple Keyboard”) → Uninstall device → check
   “Attempt to remove the driver for this device”, then reconnect the keyboard.
+
+## Remapping keys of the Apple keyboard only
+
+**Settings → Apple Magic Keyboard → Remap keys…** changes what Caps Lock, Shift, Control, Option and Command send
+(e.g. right Command → Delete, Caps Lock → Ctrl) on Apple keyboards only — other keyboards are not affected, unlike a
+`Scancode Map` in the registry, which changes all keyboards. Works over Bluetooth and USB.
+
+How: a low-level keyboard hook can replace keys but does not know which keyboard sent them; raw input knows the device
+but arrives about a millisecond later, and not at all for a key the hook swallowed (measured with `tools/InputProbe`).
+So a remapped key goes through first, and as soon as raw input reports that it came from an Apple keyboard the app takes
+it back (with a neutral “mask” key, so a lone Win or Alt does not open a menu) and presses the replacement; repeats and
+the release are replaced right away. With the background service the remapper runs as LocalSystem in your session, so it
+also works in windows started as administrator; without the service it runs in the tray app and not in those windows.
+It does not work on the sign-in and lock screens. If you used a `Scancode Map` for the same keys, remove it.
 
 ## Battery level
 
@@ -243,6 +258,7 @@ git push origin v1.3.1
 | `%ProgramFiles%\MagicSwitcher\` | the service's copy of the app |
 | `%ProgramData%\MagicSwitcher\service.json` | devices the service restores, Apple keyboard top row choice |
 | `%ProgramData%\MagicSwitcher\service-log.txt` | service log (**Open service log** in the tray menu) |
+| `%ProgramData%\MagicSwitcher\remap-log.txt` | log of the key remapper started by the service |
 
 ## Project structure
 
@@ -265,9 +281,13 @@ src/MagicSwitcher/
 │  ├─ PairingGuard.cs             — restores keyboards, re-pairs and confirms pairing requests
 │  ├─ ServicePipe.cs              — named pipe protocol between the tray app and the service
 │  ├─ ServiceInstaller.cs         — installs to Program Files, registers / removes the service
-│  └─ PrivilegedActions.cs        — admin actions: through the service, or with UAC
+│  ├─ PrivilegedActions.cs        — admin actions: through the service, or with UAC
+│  ├─ RemapHelper.cs              — runs the key remapper as SYSTEM in the user's session
+│  └─ WindowsAudio.cs             — restarts the audio services and Intel Smart Sound Bluetooth audio
 ├─ Keyboard/
-│  └─ AppleKeyboardDriver.cs      — downloads/installs Apple's keyboard driver, Fn mode
+│  ├─ AppleKeyboardDriver.cs      — downloads/installs Apple's keyboard driver, Fn mode
+│  ├─ KeyRemapper.cs              — remaps keys of Apple keyboards only (hook + raw input)
+│  └─ KeyMapping.cs
 ├─ Localization/                  — Strings*.resx (en/ru/uk), language selection
 └─ UI/
    ├─ TrayApplicationContext.cs   — tray icon and menu

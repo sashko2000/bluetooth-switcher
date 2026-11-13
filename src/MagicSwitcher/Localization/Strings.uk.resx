@@ -97,16 +97,16 @@
     <value>Верхній ряд клавіш:</value>
   </data>
   <data name="AppleFnStandard" xml:space="preserve">
-    <value>F1–F12 (медіа — з Fn)</value>
+    <value>F1–F12 (F1, F2 — з Fn)</value>
   </data>
   <data name="AppleFnMedia" xml:space="preserve">
     <value>Медіаклавіші (F1–F12 — з Fn)</value>
   </data>
   <data name="AppleFnAppliedNow" xml:space="preserve">
-    <value>Застосовано: клавіатуру перезапущено з новим налаштуванням.</value>
+    <value>Застосовано. Fn+Esc перемикає будь-коли.</value>
   </data>
   <data name="AppleFnApplied" xml:space="preserve">
-    <value>Збережено. Перепідключіть клавіатуру через меню трея (або перезавантажте Windows), щоб зміна набула чинності.</value>
+    <value>Застосовано. Fn+Esc перемикає будь-коли.</value>
   </data>
   <data name="TrayConnectTooltip" xml:space="preserve">
     <value>Підключити пристрій до цього комп’ютера</value>
@@ -385,6 +385,39 @@
     <value>Не вдалося перезапустити звук Windows: {0}</value>
   </data>
   <data name="AppleFnSignInNote" xml:space="preserve">
-    <value>На екранах входу та блокування верхній ряд завжди працює як медіаклавіші: у режимі F1–F12 драйвер Apple може втратити відпускання Delete, натиснутої як Fn+Backspace, і після Ctrl+Option+Fn+Backspace там не друкує жодна клавіатура. Ваш вибір застосовується після входу в систему (зі встановленою фоновою службою).</value>
+    <value>Fn+Esc будь-коли перемикає верхній ряд між F-клавішами та медіаклавішами. У режимі F-клавіш F3–F12 працюють без Fn; для F1 і F2 Fn потрібна завжди (драйвер Apple забирає клавіші яскравості собі). На екранах входу та блокування верхній ряд — медіаклавіші.</value>
+  </data>
+  <data name="RemapButton" xml:space="preserve">
+    <value>Перепризначити клавіші…</value>
+  </data>
+  <data name="RemapNone" xml:space="preserve">
+    <value>Клавіші не перепризначено</value>
+  </data>
+  <data name="RemapTitle" xml:space="preserve">
+    <value>Перепризначення клавіш клавіатури Apple</value>
+  </data>
+  <data name="RemapNote" xml:space="preserve">
+    <value>Діє лише на клавіатурах Apple (Bluetooth і USB), інші клавіатури не зачіпаються. З фоновою службою працює в усіх вікнах, зокрема запущених від імені адміністратора; без неї — не у вікнах адміністратора. На екранах входу та блокування не діє. Зміни застосовуються під час збереження налаштувань.</value>
+  </data>
+  <data name="RemapNoChange" xml:space="preserve">
+    <value>Без змін</value>
+  </data>
+  <data name="RemapDisabled" xml:space="preserve">
+    <value>Вимкнена</value>
+  </data>
+  <data name="RemapReset" xml:space="preserve">
+    <value>Скинути все</value>
+  </data>
+  <data name="SideLeft" xml:space="preserve">
+    <value>ліва</value>
+  </data>
+  <data name="SideRight" xml:space="preserve">
+    <value>права</value>
+  </data>
+  <data name="TopRowNowFKeys" xml:space="preserve">
+    <value>Верхній ряд: F1–F12 (перемикання — Fn+Esc)</value>
+  </data>
+  <data name="TopRowNowMedia" xml:space="preserve">
+    <value>Верхній ряд: медіаклавіші (перемикання — Fn+Esc)</value>
   </data>
 </root>

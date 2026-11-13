@@ -45,6 +45,8 @@ internal sealed class ServiceRequest
     public List<GuardedDevice>? Devices { get; set; }
     /// <summary>Configure: the Apple keyboard top row behavior the user chose (null: unknown, keep the service's).</summary>
     public bool? AppleMediaKeys { get; set; }
+    /// <summary>Configure: keys remapped on Apple keyboards (null: unknown, keep the service's).</summary>
+    public List<MagicSwitcher.Keyboard.KeyMapping>? KeyMap { get; set; }
 }
 
 internal sealed class ServiceResponse

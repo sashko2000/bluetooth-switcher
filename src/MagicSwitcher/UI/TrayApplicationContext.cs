@@ -1,5 +1,6 @@
 using MagicSwitcher.Bluetooth;
 using MagicSwitcher.Infrastructure;
+using MagicSwitcher.Keyboard;
 using MagicSwitcher.Localization;
 using MagicSwitcher.Service;
 
@@ -26,6 +27,10 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private int _trayAttempts;
 
     private AppSettings _settings;
+    private KeyRemapper? _localRemapper;
+    private FileSystemWatcher? _topRowWatcher;
+    private string? _topRowWatchedPath;
+    private bool _topRowFKeys;
     private bool _audioRestarting;
     private SettingsForm? _settingsForm;
 
@@ -128,7 +133,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         await RefreshMonitorAsync();
         await RefreshBatteryAsync();
-        await PrivilegedActions.ConfigureServiceAsync(_settings.Devices, _settings.AppleMediaKeysByDefault);
+        await ApplyServiceAndRemappingAsync();
     }
 
     private async Task RefreshMonitorAsync()
@@ -401,13 +406,14 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _settingsForm = null;
             if (result is null)
             {
-                // Cancelled, but the top row choice was applied right away: keep it.
+                // Cancelled, but the top row choice (and a service installed or removed in the window) applies right away.
                 if (appleMediaKeys != _settings.AppleMediaKeysByDefault)
                 {
                     _settings.AppleMediaKeysByDefault = appleMediaKeys;
                     TrySaveSettings();
                 }
 
+                await ApplyServiceAndRemappingAsync();
                 return;
             }
 
@@ -416,12 +422,87 @@ internal sealed class TrayApplicationContext : ApplicationContext
             TrySaveSettings();
 
             RebuildMenu();
-            await PrivilegedActions.ConfigureServiceAsync(_settings.Devices, _settings.AppleMediaKeysByDefault);
+            await ApplyServiceAndRemappingAsync();
             await RefreshMonitorAsync();
             await RefreshBatteryAsync();
         };
         _settingsForm.Show();
         _settingsForm.Activate();
+    }
+
+    /// <summary>
+    /// Sends the settings to the service, which also runs the key remapper (as SYSTEM, so it works in administrator
+    /// windows too). Without the service the remapper runs here, in the tray app.
+    /// </summary>
+    private async Task ApplyServiceAndRemappingAsync()
+    {
+        await PrivilegedActions.ConfigureServiceAsync(_settings.Devices, _settings.AppleMediaKeysByDefault, _settings.AppleKeyMap);
+
+        // Decide by the service state, not by whether this call got through: two remappers at once
+        // (the service's helper and one here) would confuse each other.
+        bool viaService = ServiceInstaller.GetState() is ServiceState.Running or ServiceState.Starting;
+
+        _localRemapper?.Dispose();
+        _localRemapper = null;
+        bool driver = AppleKeyboardDriver.IsInstalled;
+        if (!viaService && (_settings.AppleKeyMap.Count > 0 || driver))
+        {
+            if (driver && !AppleTopRow.Exists(AppleTopRow.UserPath))
+            {
+                // The choice made in versions up to 1.3, where the driver itself was switched.
+                AppleTopRow.Write(AppleTopRow.UserPath, fKeys: _settings.AppleMediaKeysByDefault == false);
+            }
+
+            _localRemapper = new KeyRemapper(_settings.AppleKeyMap, driver ? AppleTopRow.UserPath : null);
+            _localRemapper.Start();
+        }
+
+        WatchTopRow();
+    }
+
+    /// <summary>Shows a notification when Fn+Esc (or the settings) switches the top row between F-keys and media keys.</summary>
+    private void WatchTopRow()
+    {
+        string path = AppleTopRow.CurrentPath;
+        if (_topRowWatcher is not null && string.Equals(_topRowWatchedPath, path, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        _topRowWatcher?.Dispose();
+        _topRowWatcher = null;
+        _topRowWatchedPath = path;
+        _topRowFKeys = AppleTopRow.ReadFKeys(path);
+        try
+        {
+            string directory = Path.GetDirectoryName(path)!;
+            if (!Directory.Exists(directory))
+            {
+                return;
+            }
+
+            var watcher = new FileSystemWatcher(directory, Path.GetFileName(path))
+            {
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size,
+            };
+            FileSystemEventHandler changed = (_, _) => _ui.Post(_ =>
+            {
+                bool fKeys = AppleTopRow.ReadFKeys(path);
+                if (fKeys != _topRowFKeys)
+                {
+                    _topRowFKeys = fKeys;
+                    Notify(Strings.AppleGroup, fKeys ? Strings.TopRowNowFKeys : Strings.TopRowNowMedia, ToolTipIcon.Info, force: true);
+                }
+            }, null);
+            watcher.Changed += changed;
+            watcher.Created += changed;
+            watcher.EnableRaisingEvents = true;
+            _topRowWatcher = watcher;
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to watch the top row state", ex);
+        }
     }
 
     private void TrySaveSettings()
@@ -530,6 +611,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         if (disposing)
         {
+            _localRemapper?.Dispose();
+            _topRowWatcher?.Dispose();
             _batteryTimer.Dispose();
             _trayRetryTimer.Dispose();
             _shellWindow.Dispose();

@@ -33,6 +33,9 @@ internal sealed class SettingsForm : Form
     private readonly Button _appleInstall;
     private readonly ComboBox _appleFnMode;
     private readonly Label _appleFnNote;
+    private readonly Button _appleRemap;
+    private readonly Label _appleRemapSummary;
+    private List<MagicSwitcher.Keyboard.KeyMapping> _keyMap;
     private readonly GroupBox _appleGroup;
     private bool _updatingAppleFn;
 
@@ -59,6 +62,7 @@ internal sealed class SettingsForm : Form
     {
         _settings = settings;
         AppleMediaKeysByDefault = settings.AppleMediaKeysByDefault;
+        _keyMap = settings.AppleKeyMap.ToList();
 
         Text = Strings.SettingsTitle;
         StartPosition = FormStartPosition.CenterScreen;
@@ -245,6 +249,12 @@ internal sealed class SettingsForm : Form
         _appleFnNote = new Label { Text = Strings.AppleFnSignInNote, AutoSize = true, ForeColor = SystemColors.GrayText, Margin = new Padding(3, 3, 3, 0) };
         appleLayout.Controls.Add(_appleFnNote, 0, 3);
         appleLayout.SetColumnSpan(_appleFnNote, 2);
+        _appleRemap = new Button { Text = Strings.RemapButton, AutoSize = true, Margin = new Padding(3, 8, 3, 3) };
+        _appleRemap.Click += (_, _) => EditKeyMap();
+        _appleRemapSummary = new Label { AutoSize = true, Anchor = AnchorStyles.Left, ForeColor = SystemColors.GrayText, Margin = new Padding(3, 8, 3, 3) };
+        appleLayout.Controls.Add(_appleRemap, 0, 4);
+        appleLayout.Controls.Add(_appleRemapSummary, 1, 4);
+        UpdateRemapSummary();
 
         _appleGroup = new GroupBox
         {
@@ -313,6 +323,7 @@ internal sealed class SettingsForm : Form
             _servicesNote.MaximumSize = new Size(Math.Max(100, width - 20), 0);
             _appleInfo.MaximumSize = new Size(Math.Max(100, width - 20), 0);
             _appleFnNote.MaximumSize = new Size(Math.Max(100, width - 20), 0);
+            _appleRemapSummary.MaximumSize = new Size(Math.Max(100, width - 220), 0);
             _appleStatus.MaximumSize = new Size(Math.Max(100, width - 260), 0);
             _serviceInfo.MaximumSize = new Size(Math.Max(100, width - 20), 0);
             _serviceStatus.MaximumSize = new Size(Math.Max(100, width - 320), 0);
@@ -632,7 +643,7 @@ internal sealed class SettingsForm : Form
                 await Task.Delay(500);
             }
 
-            await PrivilegedActions.ConfigureServiceAsync(CurrentDevices(), AppleMediaKeysByDefault);
+            await PrivilegedActions.ConfigureServiceAsync(CurrentDevices(), AppleMediaKeysByDefault, CurrentKeyMap());
         }
         catch (OperationCanceledException)
         {
@@ -675,6 +686,22 @@ internal sealed class SettingsForm : Form
         }
     }
 
+    private List<MagicSwitcher.Keyboard.KeyMapping> CurrentKeyMap() => _keyMap;
+
+    private void EditKeyMap()
+    {
+        using var dialog = new KeyRemapForm(_keyMap);
+        if (dialog.ShowDialog(this) == DialogResult.OK)
+        {
+            _keyMap = dialog.Result;
+            UpdateRemapSummary();
+        }
+    }
+
+    private void UpdateRemapSummary() => _appleRemapSummary.Text = _keyMap.Count == 0
+        ? Strings.RemapNone
+        : string.Join(", ", _keyMap.Select(m => $"{KeyRemapForm.DescribeKey(m.From)} → {KeyRemapForm.DescribeTarget(m.To)}"));
+
     private List<SavedDevice> CurrentDevices() => _loaded
         ? _list.Items.Cast<ListViewItem>().Where(i => i.Checked).Select(i => (SavedDevice)i.Tag!).ToList()
         : _settings.Devices;
@@ -691,7 +718,7 @@ internal sealed class SettingsForm : Form
         try
         {
             _appleFnMode.Enabled = installed;
-            _appleFnMode.SelectedIndex = AppleKeyboardDriver.MediaKeysByDefault == true ? 1 : 0;
+            _appleFnMode.SelectedIndex = AppleTopRow.ReadFKeys(AppleTopRow.CurrentPath) ? 0 : 1;
         }
         finally
         {
@@ -799,6 +826,7 @@ internal sealed class SettingsForm : Form
             LowBatteryThreshold = (int)_lowBattery.Value,
             Language = (_language.SelectedItem as LanguageItem)?.Code ?? "",
             AppleMediaKeysByDefault = AppleMediaKeysByDefault,
+            AppleKeyMap = _keyMap,
         };
 
         Close();

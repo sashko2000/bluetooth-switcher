@@ -139,4 +139,15 @@ internal static class Strings
     public static string AudioRestartedReconnecting => Get(nameof(AudioRestartedReconnecting));
     public static string AudioRestartFailed(object? arg0) => Format(nameof(AudioRestartFailed), arg0);
     public static string AppleFnSignInNote => Get(nameof(AppleFnSignInNote));
+    public static string RemapButton => Get(nameof(RemapButton));
+    public static string RemapNone => Get(nameof(RemapNone));
+    public static string RemapTitle => Get(nameof(RemapTitle));
+    public static string RemapNote => Get(nameof(RemapNote));
+    public static string RemapNoChange => Get(nameof(RemapNoChange));
+    public static string RemapDisabled => Get(nameof(RemapDisabled));
+    public static string RemapReset => Get(nameof(RemapReset));
+    public static string SideLeft => Get(nameof(SideLeft));
+    public static string SideRight => Get(nameof(SideRight));
+    public static string TopRowNowFKeys => Get(nameof(TopRowNowFKeys));
+    public static string TopRowNowMedia => Get(nameof(TopRowNowMedia));
 }

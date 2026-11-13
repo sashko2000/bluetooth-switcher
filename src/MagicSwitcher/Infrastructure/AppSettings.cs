@@ -22,6 +22,9 @@ public sealed class AppSettings
     /// <summary>Apple keyboard top row chosen in settings (true = media keys); null if never changed. The service re-applies it.</summary>
     public bool? AppleMediaKeysByDefault { get; set; }
 
+    /// <summary>Keys remapped on Apple keyboards only.</summary>
+    public List<MagicSwitcher.Keyboard.KeyMapping> AppleKeyMap { get; set; } = [];
+
     public AppSettings Clone() => new()
     {
         Devices = Devices.Select(d => d with { Services = d.Services?.ToList() }).ToList(),
@@ -30,6 +33,7 @@ public sealed class AppSettings
         LowBatteryThreshold = LowBatteryThreshold,
         Language = Language,
         AppleMediaKeysByDefault = AppleMediaKeysByDefault,
+        AppleKeyMap = AppleKeyMap.ToList(),
     };
 }
 
