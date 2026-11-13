@@ -22,8 +22,12 @@ internal sealed class SettingsForm : Form
     private readonly Label _status;
 
     private readonly GroupBox _servicesGroup;
+    private readonly ComboBox _keyboard;
+    private readonly Label _keyboardHint;
     private readonly CheckBox _restore;
     private readonly Label _restoreNote;
+    private readonly Label _experimentalNote;
+    private bool _keyboardLoaded;
     private readonly CheckBox _autoServices;
     private readonly CheckedListBox _services;
     private readonly Label _servicesNote;
@@ -68,8 +72,8 @@ internal sealed class SettingsForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         AutoScaleMode = AutoScaleMode.Dpi;
         Font = SystemFonts.MessageBoxFont ?? Font;
-        MinimumSize = new Size(640, 800);
-        Size = new Size(800, 980);
+        MinimumSize = new Size(640, 600);
+        Size = new Size(800, 760);
         ShowInTaskbar = true;
         Icon = TrayIconFactory.Create();
 
@@ -106,23 +110,22 @@ internal sealed class SettingsForm : Form
         listButtons.Controls.Add(_refresh);
         listButtons.Controls.Add(_status);
 
-        // --- Restore at startup (service) and services to reconnect for the selected device ---
-        _restore = new CheckBox
-        {
-            Text = Strings.RestoreAtStartup,
-            AutoSize = true,
-            Dock = DockStyle.Top,
-        };
-        _restore.CheckedChanged += (_, _) => OnRestoreEdited();
+        // --- Keyboard tab: which keyboard, and whether the service restores it at startup and sign-in ---
+        _keyboard = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 320 };
+        _keyboard.Items.Add(new KeyboardItem(null, Strings.KeyboardNone));
+        _keyboard.SelectedIndex = 0;
+        _keyboard.SelectionChangeCommitted += (_, _) => OnKeyboardChosen();
+        _keyboardHint = new Label { Text = Strings.KeyboardHint, AutoSize = true, ForeColor = SystemColors.GrayText, Margin = new Padding(3, 0, 3, 8) };
+        _restore = new CheckBox { Text = Strings.RestoreAtStartup, AutoSize = true, Enabled = false };
         _restoreNote = new Label
         {
             Text = Strings.RestoreAtStartupNote,
             AutoSize = true,
-            Dock = DockStyle.Top,
             ForeColor = SystemColors.GrayText,
-            Padding = new Padding(16, 0, 0, 6),
+            Margin = new Padding(20, 0, 3, 8),
         };
 
+        // --- Experimental tab: services to reconnect for the selected device ---
         _autoServices = new CheckBox
         {
             Text = Strings.ServicesAuto,
@@ -153,15 +156,13 @@ internal sealed class SettingsForm : Form
         {
             Text = Strings.ServicesGroup,
             Dock = DockStyle.Fill,
-            Height = 230,
+            Height = 190,
             Padding = new Padding(8),
             Enabled = false,
         };
         _servicesGroup.Controls.Add(_services);
         _servicesGroup.Controls.Add(_servicesNote);
         _servicesGroup.Controls.Add(_autoServices);
-        _servicesGroup.Controls.Add(_restoreNote);
-        _servicesGroup.Controls.Add(_restore); // added last so that it is docked at the very top
 
         // --- General options ---
         _timeout = new NumericUpDown
@@ -181,7 +182,7 @@ internal sealed class SettingsForm : Form
         _notifications = new CheckBox { Text = Strings.SettingsNotifications, AutoSize = true, Checked = settings.ShowNotifications };
         _autoStart = new CheckBox { Text = Strings.SettingsAutoStart, AutoSize = true, Checked = AutoStart.IsEnabled };
 
-        var options = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, Padding = new Padding(0, 8, 0, 0) };
+        var options = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, Padding = new Padding(8) };
         options.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         options.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _language = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180 };
@@ -196,13 +197,11 @@ internal sealed class SettingsForm : Form
 
         options.Controls.Add(new Label { Text = Strings.SettingsLanguage, AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
         options.Controls.Add(_language, 1, 0);
-        options.Controls.Add(new Label { Text = Strings.SettingsTimeout, AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
-        options.Controls.Add(_timeout, 1, 1);
-        options.Controls.Add(new Label { Text = Strings.SettingsLowBattery, AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
-        options.Controls.Add(_lowBattery, 1, 2);
-        options.Controls.Add(_notifications, 0, 3);
+        options.Controls.Add(new Label { Text = Strings.SettingsLowBattery, AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
+        options.Controls.Add(_lowBattery, 1, 1);
+        options.Controls.Add(_notifications, 0, 2);
         options.SetColumnSpan(_notifications, 2);
-        options.Controls.Add(_autoStart, 0, 4);
+        options.Controls.Add(_autoStart, 0, 3);
         options.SetColumnSpan(_autoStart, 2);
 
         // The form is shown modelessly (Show, not ShowDialog), so a button's DialogResult does not close it:
@@ -297,39 +296,72 @@ internal sealed class SettingsForm : Form
         };
         serviceGroup.Controls.Add(serviceLayout);
 
-        var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(12, 12, 12, 0) };
-        // The column is pinned to the window width, otherwise long text stretches the layout past the edge.
-        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 230));
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.Controls.Add(hint, 0, 0);
-        root.Controls.Add(_list, 0, 1);
-        root.Controls.Add(listButtons, 0, 2);
-        root.Controls.Add(_servicesGroup, 0, 3);
-        root.Controls.Add(serviceGroup, 0, 4);
-        root.Controls.Add(_appleGroup, 0, 5);
-        root.Controls.Add(options, 0, 6);
+        // --- Tabs: the keyboard first; reconnecting other devices is a separate, experimental tab ---
+        var keyboardRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 2) };
+        keyboardRow.Controls.Add(new Label { Text = Strings.KeyboardLabel, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(3, 6, 6, 3) });
+        keyboardRow.Controls.Add(_keyboard);
 
-        // Wrap long labels to the window width.
+        var keyboardLayout = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1, Padding = new Padding(8) };
+        keyboardLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        keyboardLayout.Controls.Add(keyboardRow, 0, 0);
+        keyboardLayout.Controls.Add(_keyboardHint, 0, 1);
+        keyboardLayout.Controls.Add(_restore, 0, 2);
+        keyboardLayout.Controls.Add(_restoreNote, 0, 3);
+        keyboardLayout.Controls.Add(_appleGroup, 0, 4);
+        keyboardLayout.Controls.Add(serviceGroup, 0, 5);
+        var keyboardPage = new TabPage(Strings.TabKeyboard) { AutoScroll = true, UseVisualStyleBackColor = true };
+        keyboardPage.Controls.Add(keyboardLayout);
+
+        var generalPage = new TabPage(Strings.TabGeneral) { AutoScroll = true, UseVisualStyleBackColor = true };
+        generalPage.Controls.Add(options);
+
+        _experimentalNote = new Label { Text = Strings.ExperimentalNote, AutoSize = true, Padding = new Padding(0, 0, 0, 6) };
+        var timeoutRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Dock = DockStyle.Fill };
+        timeoutRow.Controls.Add(new Label { Text = Strings.SettingsTimeout, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(3, 6, 6, 3) });
+        timeoutRow.Controls.Add(_timeout);
+
+        var devicesLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(8) };
+        // The column is pinned to the page width, otherwise long text stretches the layout past the edge.
+        devicesLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        devicesLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        devicesLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        devicesLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        devicesLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        devicesLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 190));
+        devicesLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        devicesLayout.Controls.Add(_experimentalNote, 0, 0);
+        devicesLayout.Controls.Add(hint, 0, 1);
+        devicesLayout.Controls.Add(_list, 0, 2);
+        devicesLayout.Controls.Add(listButtons, 0, 3);
+        devicesLayout.Controls.Add(_servicesGroup, 0, 4);
+        devicesLayout.Controls.Add(timeoutRow, 0, 5);
+        var devicesPage = new TabPage(Strings.TabExperimental) { UseVisualStyleBackColor = true };
+        devicesPage.Controls.Add(devicesLayout);
+
+        var tabs = new TabControl { Dock = DockStyle.Fill };
+        tabs.TabPages.Add(keyboardPage);
+        tabs.TabPages.Add(generalPage);
+        tabs.TabPages.Add(devicesPage);
+        var root = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12, 12, 12, 0) };
+        root.Controls.Add(tabs);
+
+        // Wrap long labels to the page width.
         void Wrap()
         {
-            int width = Math.Max(100, root.ClientSize.Width - root.Padding.Horizontal - hint.Margin.Horizontal);
+            int width = Math.Max(100, tabs.DisplayRectangle.Width - 40);
             hint.MaximumSize = new Size(width, 0);
-            _servicesNote.MaximumSize = new Size(Math.Max(100, width - 20), 0);
-            _appleInfo.MaximumSize = new Size(Math.Max(100, width - 20), 0);
-            _appleFnNote.MaximumSize = new Size(Math.Max(100, width - 20), 0);
-            _appleRemapSummary.MaximumSize = new Size(Math.Max(100, width - 220), 0);
-            _appleStatus.MaximumSize = new Size(Math.Max(100, width - 260), 0);
-            _serviceInfo.MaximumSize = new Size(Math.Max(100, width - 20), 0);
-            _serviceStatus.MaximumSize = new Size(Math.Max(100, width - 320), 0);
+            _experimentalNote.MaximumSize = new Size(width, 0);
+            _keyboardHint.MaximumSize = new Size(width, 0);
             _restoreNote.MaximumSize = new Size(Math.Max(100, width - 20), 0);
+            _servicesNote.MaximumSize = new Size(Math.Max(100, width - 20), 0);
+            _appleInfo.MaximumSize = new Size(Math.Max(100, width - 30), 0);
+            _appleFnNote.MaximumSize = new Size(Math.Max(100, width - 30), 0);
+            _appleRemapSummary.MaximumSize = new Size(Math.Max(100, width - 230), 0);
+            _appleStatus.MaximumSize = new Size(Math.Max(100, width - 270), 0);
+            _serviceInfo.MaximumSize = new Size(Math.Max(100, width - 30), 0);
+            _serviceStatus.MaximumSize = new Size(Math.Max(100, width - 330), 0);
         }
-        root.SizeChanged += (_, _) => Wrap();
+        tabs.SizeChanged += (_, _) => Wrap();
 
         Controls.Add(root);
         Controls.Add(dialogButtons); // added after root so that Dock.Bottom is laid out first
@@ -397,6 +429,7 @@ internal sealed class SettingsForm : Form
             }
 
             _list.EndUpdate();
+            FillKeyboards(paired, knownSaved, checkedKeys);
             _loaded = true;
             _appleGroup.Visible = AppleKeyboardDriver.IsInstalled || AppleKeyboardDriver.IsSupportedKeyboardPresent();
             _status.Text = paired.Count == 0
@@ -423,6 +456,82 @@ internal sealed class SettingsForm : Form
         {
             _refresh.Enabled = true;
         }
+    }
+
+    /// <summary>
+    /// The keyboard chooser on the first tab: paired Classic keyboards. The chosen one is always in the tray menu,
+    /// and "Restore at startup and sign-in" applies to it.
+    /// </summary>
+    private void FillKeyboards(IReadOnlyList<PairedDeviceInfo> paired, Dictionary<string, SavedDevice> knownSaved, HashSet<string> checkedKeys)
+    {
+        var keyboards = paired.Where(p => p.IsKeyboard && !p.IsLowEnergy).ToList();
+        string? wantedKey;
+        bool restore = _restore.Checked;
+        if (_keyboardLoaded)
+        {
+            wantedKey = (_keyboard.SelectedItem as KeyboardItem)?.Device?.Key;
+        }
+        else
+        {
+            // First load: the keyboard restored by the service, else a keyboard that is in the tray menu already.
+            var restored = _settings.Devices.FirstOrDefault(d => d.RestoreAtStartup && !d.IsLowEnergy);
+            wantedKey = restored?.Key ?? keyboards.FirstOrDefault(k => checkedKeys.Contains(k.Key))?.Key;
+            restore = restored is not null;
+        }
+
+        _keyboard.BeginUpdate();
+        _keyboard.Items.Clear();
+        _keyboard.Items.Add(new KeyboardItem(null, Strings.KeyboardNone));
+        foreach (var keyboard in keyboards)
+        {
+            var saved = knownSaved.TryGetValue(keyboard.Key, out var existing) ? existing with { Name = keyboard.Name } : keyboard.ToSaved();
+            _keyboard.Items.Add(new KeyboardItem(saved, keyboard.Name));
+        }
+
+        if (wantedKey is not null && keyboards.All(k => k.Key != wantedKey) && knownSaved.TryGetValue(wantedKey, out var missing))
+        {
+            _keyboard.Items.Add(new KeyboardItem(missing, $"{missing.DisplayName} — {Strings.StatusNotFound}"));
+        }
+
+        _keyboard.SelectedItem = _keyboard.Items.Cast<KeyboardItem>().FirstOrDefault(i => i.Device?.Key == wantedKey && wantedKey is not null)
+                                 ?? _keyboard.Items[0];
+        _keyboard.EndUpdate();
+        _keyboardLoaded = true;
+
+        bool chosen = (_keyboard.SelectedItem as KeyboardItem)?.Device is not null;
+        _restore.Enabled = chosen;
+        _restore.Checked = chosen && restore;
+        CheckChosenKeyboardInList();
+    }
+
+    private void OnKeyboardChosen()
+    {
+        bool chosen = (_keyboard.SelectedItem as KeyboardItem)?.Device is not null;
+        _restore.Enabled = chosen;
+        _restore.Checked = chosen; // restoring is the point of choosing a keyboard; it can be unchecked
+        CheckChosenKeyboardInList();
+    }
+
+    /// <summary>The chosen keyboard is always shown in the tray menu.</summary>
+    private void CheckChosenKeyboardInList()
+    {
+        if ((_keyboard.SelectedItem as KeyboardItem)?.Device is not { } keyboard)
+        {
+            return;
+        }
+
+        foreach (ListViewItem item in _list.Items)
+        {
+            if (((SavedDevice)item.Tag!).Key == keyboard.Key)
+            {
+                item.Checked = true;
+            }
+        }
+    }
+
+    private sealed record KeyboardItem(SavedDevice? Device, string Name)
+    {
+        public override string ToString() => Name;
     }
 
     private sealed record LanguageItem(string Code, string Name)
@@ -521,7 +630,6 @@ internal sealed class SettingsForm : Form
             }
 
             _autoServices.Checked = auto;
-            _restore.Checked = saved.RestoreAtStartup;
             _services.Enabled = !auto;
             _servicesGroup.Enabled = true;
             _servicesItem = item;
@@ -540,7 +648,6 @@ internal sealed class SettingsForm : Form
             _servicesGroup.Text = title;
             _services.Items.Clear();
             _autoServices.Checked = true;
-            _restore.Checked = false;
             _servicesGroup.Enabled = enabled;
         }
         finally
@@ -585,21 +692,6 @@ internal sealed class SettingsForm : Form
             var selected = _services.CheckedItems.Cast<ServiceItem>().Select(s => s.Id).ToList();
             // An empty selection means "automatic", otherwise there would be nothing to reconnect.
             _servicesItem.Tag = saved with { Services = selected.Count > 0 ? selected : null };
-        }
-    }
-
-    private void OnRestoreEdited()
-    {
-        if (_updatingServices || _servicesItem is null || _servicesItem.ListView is null)
-        {
-            return;
-        }
-
-        var saved = (SavedDevice)_servicesItem.Tag!;
-        _servicesItem.Tag = saved with { RestoreAtStartup = _restore.Checked };
-        if (_restore.Checked)
-        {
-            _servicesItem.Checked = true; // restoring a device implies showing it in the menu
         }
     }
 
@@ -702,9 +794,30 @@ internal sealed class SettingsForm : Form
         ? Strings.RemapNone
         : string.Join(", ", _keyMap.Select(m => $"{KeyRemapForm.DescribeKey(m.From)} → {KeyRemapForm.DescribeTarget(m.To)}"));
 
-    private List<SavedDevice> CurrentDevices() => _loaded
-        ? _list.Items.Cast<ListViewItem>().Where(i => i.Checked).Select(i => (SavedDevice)i.Tag!).ToList()
-        : _settings.Devices;
+    /// <summary>
+    /// Devices for the tray menu: the checked ones on the experimental tab plus the keyboard chosen on the first tab,
+    /// which is the only one the service restores.
+    /// </summary>
+    private List<SavedDevice> CurrentDevices()
+    {
+        if (!_loaded)
+        {
+            return _settings.Devices;
+        }
+
+        var keyboard = (_keyboard.SelectedItem as KeyboardItem)?.Device;
+        var all = _list.Items.Cast<ListViewItem>().Select(i => (Item: i, Device: (SavedDevice)i.Tag!)).ToList();
+        var devices = all
+            .Where(x => x.Item.Checked || x.Device.Key == keyboard?.Key)
+            .Select(x => x.Device with { RestoreAtStartup = x.Device.Key == keyboard?.Key && _restore.Checked })
+            .ToList();
+        if (keyboard is not null && devices.All(d => d.Key != keyboard.Key))
+        {
+            devices.Insert(0, keyboard with { RestoreAtStartup = _restore.Checked }); // chosen, but no longer paired
+        }
+
+        return devices;
+    }
 
     private void RefreshAppleDriverState(string? status = null)
     {

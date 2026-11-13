@@ -9,3 +9,6 @@ publish/
 _drivers/
 AppleBcUpdate.exe
 *.zip
+
+# Files Claude saved from the chat
+Claude outputs/

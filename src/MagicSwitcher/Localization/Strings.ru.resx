@@ -420,4 +420,25 @@
   <data name="TopRowNowMedia" xml:space="preserve">
     <value>Верхний ряд: медиаклавиши (переключение — Fn+Esc)</value>
   </data>
+  <data name="TabKeyboard" xml:space="preserve">
+    <value>Клавиатура</value>
+  </data>
+  <data name="TabGeneral" xml:space="preserve">
+    <value>Общие</value>
+  </data>
+  <data name="TabExperimental" xml:space="preserve">
+    <value>Другие устройства (эксперимент)</value>
+  </data>
+  <data name="KeyboardLabel" xml:space="preserve">
+    <value>Клавиатура:</value>
+  </data>
+  <data name="KeyboardNone" xml:space="preserve">
+    <value>(не выбрана)</value>
+  </data>
+  <data name="KeyboardHint" xml:space="preserve">
+    <value>У клавиатуры появляется пункт «Подключить» в меню трея: он возвращает клавиатуру на этот компьютер после другого устройства. Если в меню только она, то же делает двойной щелчок по значку.</value>
+  </data>
+  <data name="ExperimentalNote" xml:space="preserve">
+    <value>Эксперимент: переподключение других Bluetooth-устройств в один клик — колонок, наушников, других клавиатур и мышей. Зависит от устройства и работает не со всеми.</value>
+  </data>
 </root>

@@ -420,4 +420,25 @@
   <data name="TopRowNowMedia" xml:space="preserve">
     <value>Top row: media keys (Fn+Esc switches)</value>
   </data>
+  <data name="TabKeyboard" xml:space="preserve">
+    <value>Keyboard</value>
+  </data>
+  <data name="TabGeneral" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="TabExperimental" xml:space="preserve">
+    <value>Other devices (experimental)</value>
+  </data>
+  <data name="KeyboardLabel" xml:space="preserve">
+    <value>Keyboard:</value>
+  </data>
+  <data name="KeyboardNone" xml:space="preserve">
+    <value>(not selected)</value>
+  </data>
+  <data name="KeyboardHint" xml:space="preserve">
+    <value>The keyboard gets a “Connect” item in the tray menu: it brings the keyboard to this computer after another device used it. Double-click the tray icon does the same when it is the only device in the menu.</value>
+  </data>
+  <data name="ExperimentalNote" xml:space="preserve">
+    <value>Experimental: one-click reconnect for other Bluetooth devices — speakers, headphones, other keyboards and mice. It depends on the device and does not work with every one.</value>
+  </data>
 </root>

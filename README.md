@@ -39,9 +39,9 @@ needed). The app is not code-signed, so Windows SmartScreen may warn on the firs
 
 1. Pair the keyboard with Windows once (Settings → Bluetooth & devices → Add device; turn the keyboard off and on
    to make it visible).
-2. Start `MagicSwitcher.exe`, open **Settings** from the tray icon and check **Magic Keyboard**.
-3. Check **Restore at startup and sign-in** and click **Install service** (one administrator confirmation).
-4. Optionally, in **Apple Magic Keyboard**, click **Install driver** and choose the **top row** behavior.
+2. Start `MagicSwitcher.exe`, open **Settings** from the tray icon and choose your keyboard on the **Keyboard** tab.
+3. Keep **Restore at startup and sign-in** checked and click **Install service** (one administrator confirmation).
+4. Optionally, in **Apple Magic Keyboard**, click **Install driver**, choose the **top row** behavior and remap keys.
 5. Click **Save**.
 
 From then on:
@@ -187,12 +187,11 @@ took the keyboard over (see above), and the tray's **Connect** goes through the 
 
 ## Settings
 
-- **Devices** shown in the tray menu, and for each Classic device **Restore at startup and sign-in** (needs the
-  service) and the **services to reconnect** when it is already connected (Automatic, or a manual selection).
-- **Background service**: install, update or remove it (see above).
-- **Apple Magic Keyboard** driver and top row behavior (see above).
-- **Language**, **connection timeout**, **low battery warning** threshold, notifications on success and
-  **start with Windows**.
+- **Keyboard** tab: your keyboard and **Restore at startup and sign-in**; the Apple driver, **top row** mode and
+  **key remapping**; the **background service** (install, update or remove).
+- **General** tab: language, low battery warning threshold, notifications and start with Windows.
+- **Other devices (experimental)** tab: other devices to show in the tray menu for a one-click reconnect, the
+  **services to reconnect** for each Classic device (Automatic, or a manual selection) and the connection timeout.
 
 ## Languages
 

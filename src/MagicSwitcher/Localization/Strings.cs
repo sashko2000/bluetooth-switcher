@@ -150,4 +150,11 @@ internal static class Strings
     public static string SideRight => Get(nameof(SideRight));
     public static string TopRowNowFKeys => Get(nameof(TopRowNowFKeys));
     public static string TopRowNowMedia => Get(nameof(TopRowNowMedia));
+    public static string TabKeyboard => Get(nameof(TabKeyboard));
+    public static string TabGeneral => Get(nameof(TabGeneral));
+    public static string TabExperimental => Get(nameof(TabExperimental));
+    public static string KeyboardLabel => Get(nameof(KeyboardLabel));
+    public static string KeyboardNone => Get(nameof(KeyboardNone));
+    public static string KeyboardHint => Get(nameof(KeyboardHint));
+    public static string ExperimentalNote => Get(nameof(ExperimentalNote));
 }
