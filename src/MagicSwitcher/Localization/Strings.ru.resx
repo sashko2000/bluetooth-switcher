@@ -441,4 +441,25 @@
   <data name="ExperimentalNote" xml:space="preserve">
     <value>Эксперимент: переподключение других Bluetooth-устройств в один клик — колонок, наушников, других клавиатур и мышей. Зависит от устройства и работает не со всеми.</value>
   </data>
+  <data name="SettingsWatchMicrophone" xml:space="preserve">
+    <value>Уведомлять, когда Bluetooth-колонка или гарнитура теряет микрофон</value>
+  </data>
+  <data name="SettingsRestoreMicrophone" xml:space="preserve">
+    <value>Восстанавливать микрофон автоматически</value>
+  </data>
+  <data name="SettingsRestoreMicrophoneNote" xml:space="preserve">
+    <value>Перезапускает звук Windows: звук во всех приложениях прерывается на несколько секунд, в том числе во время звонка. Нужна фоновая служба; без неё будет показано уведомление.</value>
+  </data>
+  <data name="MicrophoneLostTitle" xml:space="preserve">
+    <value>Пропал микрофон</value>
+  </data>
+  <data name="MicrophoneLostText" xml:space="preserve">
+    <value>«{0}» подключено без микрофона. Нажмите здесь или выберите «Вернуть микрофон» в меню значка, чтобы восстановить его (звук прервётся на несколько секунд).</value>
+  </data>
+  <data name="MicrophoneLostFixing" xml:space="preserve">
+    <value>«{0}» потеряло микрофон. Перезапускаю звук Windows, чтобы его вернуть…</value>
+  </data>
+  <data name="TrayRestoreMicrophone" xml:space="preserve">
+    <value>Вернуть микрофон «{0}»</value>
+  </data>
 </root>

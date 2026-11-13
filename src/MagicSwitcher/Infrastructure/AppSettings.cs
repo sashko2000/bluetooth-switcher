@@ -16,6 +16,12 @@ public sealed class AppSettings
     /// <summary>Warn when a connected device's battery drops to this level, in percent; 0 turns the warning off.</summary>
     public int LowBatteryThreshold { get; set; } = 15;
 
+    /// <summary>Notify when a connected Bluetooth speaker or headset has lost its microphone.</summary>
+    public bool WatchMicrophone { get; set; } = true;
+
+    /// <summary>Restore a lost microphone without asking (restarts Windows audio, which interrupts sound for a few seconds).</summary>
+    public bool RestoreMicrophoneAutomatically { get; set; }
+
     /// <summary>UI language code ("en", "ru", "uk"); empty means the Windows display language.</summary>
     public string Language { get; set; } = "";
 
@@ -31,6 +37,8 @@ public sealed class AppSettings
         ConnectTimeoutSeconds = ConnectTimeoutSeconds,
         ShowNotifications = ShowNotifications,
         LowBatteryThreshold = LowBatteryThreshold,
+        WatchMicrophone = WatchMicrophone,
+        RestoreMicrophoneAutomatically = RestoreMicrophoneAutomatically,
         Language = Language,
         AppleMediaKeysByDefault = AppleMediaKeysByDefault,
         AppleKeyMap = AppleKeyMap.ToList(),

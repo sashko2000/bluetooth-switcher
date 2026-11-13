@@ -182,6 +182,10 @@ internal static class PrivilegedActions
         return response.Ok ? true : throw new InvalidOperationException(response.Message);
     }
 
+    /// <summary>Windows audio can be restarted without a UAC prompt (through the service, or this process is elevated).</summary>
+    public static bool CanRestartWindowsAudioSilently =>
+        ServiceInstaller.GetState() == ServiceState.Running || Elevation.IsElevated;
+
     /// <summary>Restarts the Windows audio services: through the service, or with a UAC prompt. Returns a Win32 error code.</summary>
     public static async Task<int> RestartWindowsAudioAsync()
     {

@@ -32,6 +32,10 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private string? _topRowWatchedPath;
     private bool _topRowFKeys;
     private bool _audioRestarting;
+    private readonly MicrophoneWatcher _microphones = new();
+    private readonly System.Windows.Forms.Timer _microphoneTimer = new() { Interval = (int)TimeSpan.FromSeconds(30).TotalMilliseconds };
+    private bool _microphoneChecking;
+    private Action? _balloonAction;
     private SettingsForm? _settingsForm;
 
     public TrayApplicationContext()
@@ -54,6 +58,13 @@ internal sealed class TrayApplicationContext : ApplicationContext
             Visible = true,
         };
         _tray.MouseDoubleClick += OnTrayDoubleClick;
+        _tray.BalloonTipClicked += (_, _) =>
+        {
+            var action = _balloonAction;
+            _balloonAction = null;
+            action?.Invoke();
+        };
+        _tray.BalloonTipClosed += (_, _) => _balloonAction = null;
 
         // Keep the tray icon visible when the app is started (elevated) at logon before the taskbar exists,
         // and when Explorer restarts. See ShellMessages for why the message filter is needed.
@@ -95,6 +106,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
         };
         _batteryTimer.Tick += (_, _) => _ = RefreshBatteryAsync();
         _batteryTimer.Start();
+        _microphoneTimer.Tick += async (_, _) => await CheckMicrophonesAsync();
+        _microphoneTimer.Start();
 
         RebuildMenu();
         _ = InitializeStatusAsync();
@@ -190,12 +203,23 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
 
         _menu.Items.Add(new ToolStripSeparator());
-        _menu.Items.Add(new ToolStripMenuItem(_audioRestarting ? Strings.TrayRestartingAudio : Strings.TrayRestartAudio, null,
-            async (_, _) => await RestartAudioAsync())
+        // A speaker or headset without its microphone: the same action, named by what it is needed for.
+        bool lostMicrophone = !_audioRestarting && _microphones.Lost.Count > 0;
+        var audioItem = new ToolStripMenuItem(
+            _audioRestarting ? Strings.TrayRestartingAudio
+            : lostMicrophone ? Strings.TrayRestoreMicrophone(LostMicrophoneNames())
+            : Strings.TrayRestartAudio,
+            null, async (_, _) => await RestartAudioAsync())
         {
             Enabled = !_audioRestarting,
             ToolTipText = Strings.TrayRestartAudioTooltip,
-        });
+        };
+        if (lostMicrophone)
+        {
+            audioItem.Font = new Font(audioItem.Font, FontStyle.Bold);
+        }
+
+        _menu.Items.Add(audioItem);
         _menu.Items.Add(new ToolStripMenuItem(Strings.TraySettings, null, (_, _) => ShowSettings()));
 
         _menu.Items.Add(new ToolStripMenuItem(Strings.TrayOpenLog, null, (_, _) => OpenLog(Log.FilePath)));
@@ -518,6 +542,70 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
     }
 
+    private string LostMicrophoneNames() => string.Join(", ", _microphones.Lost.Select(d => d.DisplayName));
+
+    /// <summary>
+    /// Every 30 s: a connected speaker or headset that lost its microphone gets a notification (click it, or use the
+    /// tray menu, to restore) or, if chosen in settings, is repaired right away.
+    /// </summary>
+    private async Task CheckMicrophonesAsync()
+    {
+        if (!_settings.WatchMicrophone)
+        {
+            _microphones.Clear();
+            return;
+        }
+
+        if (_microphoneChecking || _audioRestarting || _busy.Count > 0)
+        {
+            return;
+        }
+
+        _microphoneChecking = true;
+        try
+        {
+            int before = _microphones.Lost.Count;
+            var found = await _microphones.CheckAsync();
+            if (_audioRestarting || _busy.Count > 0)
+            {
+                _microphones.Clear(); // a reconnect started meanwhile: what was seen is no longer true
+                return;
+            }
+
+            if (_microphones.Lost.Count != before)
+            {
+                RebuildMenu();
+            }
+
+            if (found.Count == 0)
+            {
+                return;
+            }
+
+            string names = string.Join(", ", found.Select(d => d.DisplayName));
+            if (_settings.RestoreMicrophoneAutomatically && PrivilegedActions.CanRestartWindowsAudioSilently)
+            {
+                Log.Info($"Lost microphone ({names}): restoring automatically");
+                Notify(Strings.MicrophoneLostTitle, Strings.MicrophoneLostFixing(names), ToolTipIcon.Info, force: true);
+                await RestartAudioAsync();
+            }
+            else
+            {
+                Log.Info($"Lost microphone ({names}): notifying");
+                Notify(Strings.MicrophoneLostTitle, Strings.MicrophoneLostText(names), ToolTipIcon.Warning, force: true,
+                    onClick: () => _ = RestartAudioAsync());
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to check the microphones", ex);
+        }
+        finally
+        {
+            _microphoneChecking = false;
+        }
+    }
+
     /// <summary>
     /// Restarts the Windows audio services, then reconnects the selected speakers and headsets that are connected:
     /// what helps when sound and the microphone stop working everywhere and otherwise only a reboot would.
@@ -530,6 +618,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
 
         _audioRestarting = true;
+        var lost = _microphones.Lost.ToList();
         RebuildMenu();
         try
         {
@@ -545,6 +634,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
             // Bluetooth audio devices reconnect their audio endpoints to the restarted services.
             var audioDevices = _settings.Devices
                 .Where(d => !d.IsLowEnergy && _monitor.IsConnected(d) == true && IsAudioDevice(d))
+                .Concat(lost) // also the ones not selected in settings
+                .DistinctBy(d => d.Key)
                 .ToList();
             Notify(Strings.NotifyDone, audioDevices.Count > 0 ? Strings.AudioRestartedReconnecting : Strings.AudioRestarted, ToolTipIcon.Info);
             foreach (var device in audioDevices)
@@ -564,8 +655,17 @@ internal sealed class TrayApplicationContext : ApplicationContext
         finally
         {
             _audioRestarting = false;
+            _microphones.Restart();
+            _ = RecheckMicrophonesAsync();
             RebuildMenu();
         }
+    }
+
+    /// <summary>After a repair: update the menu item without waiting for the next two timer checks.</summary>
+    private async Task RecheckMicrophonesAsync()
+    {
+        await Task.Delay(TimeSpan.FromSeconds(5));
+        await CheckMicrophonesAsync();
     }
 
     private static bool IsAudioDevice(SavedDevice device)
@@ -592,10 +692,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
     }
 
-    private void Notify(string title, string text, ToolTipIcon icon, bool force = false)
+    /// <param name="onClick">Runs if the user clicks the notification while it is shown.</param>
+    private void Notify(string title, string text, ToolTipIcon icon, bool force = false, Action? onClick = null)
     {
         if (_settings.ShowNotifications || force)
         {
+            _balloonAction = onClick;
             _tray.ShowBalloonTip(4000, title, text, icon);
         }
     }
@@ -614,6 +716,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _localRemapper?.Dispose();
             _topRowWatcher?.Dispose();
             _batteryTimer.Dispose();
+            _microphoneTimer.Dispose();
             _trayRetryTimer.Dispose();
             _shellWindow.Dispose();
             _monitor.Dispose();

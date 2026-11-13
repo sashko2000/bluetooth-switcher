@@ -441,4 +441,25 @@
   <data name="ExperimentalNote" xml:space="preserve">
     <value>Experimental: one-click reconnect for other Bluetooth devices — speakers, headphones, other keyboards and mice. It depends on the device and does not work with every one.</value>
   </data>
+  <data name="SettingsWatchMicrophone" xml:space="preserve">
+    <value>Notify when a Bluetooth speaker or headset loses its microphone</value>
+  </data>
+  <data name="SettingsRestoreMicrophone" xml:space="preserve">
+    <value>Restore the microphone automatically</value>
+  </data>
+  <data name="SettingsRestoreMicrophoneNote" xml:space="preserve">
+    <value>Restarts Windows audio: sound in all apps is interrupted for a few seconds, also during a call. Needs the background service; without it you get the notification.</value>
+  </data>
+  <data name="MicrophoneLostTitle" xml:space="preserve">
+    <value>Microphone lost</value>
+  </data>
+  <data name="MicrophoneLostText" xml:space="preserve">
+    <value>“{0}” is connected without its microphone. Click here, or choose “Restore the microphone” in the tray menu, to bring it back (sound is interrupted for a few seconds).</value>
+  </data>
+  <data name="MicrophoneLostFixing" xml:space="preserve">
+    <value>“{0}” lost its microphone. Restarting Windows audio to bring it back…</value>
+  </data>
+  <data name="TrayRestoreMicrophone" xml:space="preserve">
+    <value>Restore the microphone of “{0}”</value>
+  </data>
 </root>

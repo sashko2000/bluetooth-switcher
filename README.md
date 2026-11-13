@@ -149,6 +149,18 @@ Bluetooth devices (“Intel Smart Sound Technology for Bluetooth Audio / LE Audi
 microphone does not come back even after reconnecting all its audio profiles). Then it reconnects the selected speakers
 and headsets that are connected. It goes through the background service (no prompt) or asks for a UAC confirmation.
 
+### A speaker or headset that loses its microphone
+
+Sometimes a Bluetooth speaker or headset stays connected but Windows shows it as “Connected audio” instead of
+“Connected mic, audio”: the microphone is gone and reconnecting the device does not bring it back. MagicSwitcher checks
+every connected Bluetooth audio device (selected in settings or not) twice a minute. When one has Hands-Free enabled but
+no microphone, you get a notification: click it, or choose **Restore the microphone of “Name”** in the tray menu (it is
+the same action as **Restart Windows audio**).
+
+**Settings → General** has two options: *Notify when a Bluetooth speaker or headset loses its microphone* (on by default)
+and *Restore the microphone automatically* (off by default: restarting audio interrupts sound in all apps for a few
+seconds, also during a call; it needs the background service).
+
 ## Other devices and how connecting works
 
 1. In **Settings**, check any paired devices (the list comes from Windows: Classic and BLE): other multi-host

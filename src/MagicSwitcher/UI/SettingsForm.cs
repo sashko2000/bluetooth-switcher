@@ -17,6 +17,8 @@ internal sealed class SettingsForm : Form
     private readonly NumericUpDown _timeout;
     private readonly NumericUpDown _lowBattery;
     private readonly CheckBox _notifications;
+    private readonly CheckBox _watchMicrophone;
+    private readonly CheckBox _restoreMicrophone;
     private readonly CheckBox _autoStart;
     private readonly ComboBox _language;
     private readonly Label _status;
@@ -181,6 +183,24 @@ internal sealed class SettingsForm : Form
         };
         _notifications = new CheckBox { Text = Strings.SettingsNotifications, AutoSize = true, Checked = settings.ShowNotifications };
         _autoStart = new CheckBox { Text = Strings.SettingsAutoStart, AutoSize = true, Checked = AutoStart.IsEnabled };
+        _watchMicrophone = new CheckBox { Text = Strings.SettingsWatchMicrophone, AutoSize = true, Checked = settings.WatchMicrophone };
+        _restoreMicrophone = new CheckBox
+        {
+            Text = Strings.SettingsRestoreMicrophone,
+            AutoSize = true,
+            Checked = settings.RestoreMicrophoneAutomatically,
+            Enabled = settings.WatchMicrophone,
+            Margin = new Padding(22, 3, 3, 0),
+        };
+        _watchMicrophone.CheckedChanged += (_, _) => _restoreMicrophone.Enabled = _watchMicrophone.Checked;
+        var restoreMicrophoneNote = new Label
+        {
+            Text = Strings.SettingsRestoreMicrophoneNote,
+            AutoSize = true,
+            ForeColor = SystemColors.GrayText,
+            MaximumSize = new Size(560, 0),
+            Margin = new Padding(40, 0, 3, 6),
+        };
 
         var options = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, Padding = new Padding(8) };
         options.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -203,6 +223,12 @@ internal sealed class SettingsForm : Form
         options.SetColumnSpan(_notifications, 2);
         options.Controls.Add(_autoStart, 0, 3);
         options.SetColumnSpan(_autoStart, 2);
+        options.Controls.Add(_watchMicrophone, 0, 4);
+        options.SetColumnSpan(_watchMicrophone, 2);
+        options.Controls.Add(_restoreMicrophone, 0, 5);
+        options.SetColumnSpan(_restoreMicrophone, 2);
+        options.Controls.Add(restoreMicrophoneNote, 0, 6);
+        options.SetColumnSpan(restoreMicrophoneNote, 2);
 
         // The form is shown modelessly (Show, not ShowDialog), so a button's DialogResult does not close it:
         // both buttons close the form explicitly.
@@ -937,6 +963,8 @@ internal sealed class SettingsForm : Form
             ConnectTimeoutSeconds = (int)_timeout.Value,
             ShowNotifications = _notifications.Checked,
             LowBatteryThreshold = (int)_lowBattery.Value,
+            WatchMicrophone = _watchMicrophone.Checked,
+            RestoreMicrophoneAutomatically = _watchMicrophone.Checked && _restoreMicrophone.Checked,
             Language = (_language.SelectedItem as LanguageItem)?.Code ?? "",
             AppleMediaKeysByDefault = AppleMediaKeysByDefault,
             AppleKeyMap = _keyMap,
