@@ -212,7 +212,9 @@ internal sealed class PairingGuard : IDisposable
             }
 
             bool unpaired = !(state.Known && state.Paired);
-            if (unpaired)
+            // Right after boot the Bluetooth stack is not up yet and every device is "unknown" for a few seconds: that is
+            // not a lost pairing, so it must not start the knocking before the initial wait is over.
+            if (unpaired && (state.Known || DateTime.UtcNow >= session.Started + session.Plan.InitialWait))
             {
                 // A failed pairing attempt changes nothing, so try often: the keyboard accepts a new pairing only for
                 // a short while after it is turned on — and then it shows up connected without a pairing: try right away.
@@ -629,6 +631,8 @@ internal sealed class PairingGuard : IDisposable
         public Plan Plan { get; private set; } = plan;
         public DateTime Deadline { get; private set; } = DateTime.UtcNow + plan.Duration;
         public DateTime NextKnock { get; set; } = DateTime.UtcNow + plan.InitialWait;
+
+        public DateTime Started { get; } = DateTime.UtcNow;
 
         public DateTime LastKnock { get; set; } = DateTime.MinValue;
 
