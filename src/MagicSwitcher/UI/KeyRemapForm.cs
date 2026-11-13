@@ -4,6 +4,7 @@ using MagicSwitcher.Localization;
 namespace MagicSwitcher.UI;
 
 /// <summary>Choose what the modifier keys of an Apple keyboard send. Other keyboards are not affected.</summary>
+[System.ComponentModel.DesignerCategory("Code")] // built in code: keeps Visual Studio from opening the designer and creating a .resx
 internal sealed class KeyRemapForm : Form
 {
     private readonly Dictionary<AppleKey, ComboBox> _combos = [];

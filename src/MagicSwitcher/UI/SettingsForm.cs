@@ -6,6 +6,7 @@ using MagicSwitcher.Service;
 
 namespace MagicSwitcher.UI;
 
+[System.ComponentModel.DesignerCategory("Code")] // built in code: keeps Visual Studio from opening the designer and creating a .resx
 internal sealed class SettingsForm : Form
 {
     private readonly AppSettings _settings;
