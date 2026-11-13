@@ -74,6 +74,7 @@ internal sealed class PairingGuard : IDisposable
         {
             var state = NativeBluetooth.GetState(device.Address);
             string hid = DescribeHid(device, state);
+            bool types = Types(device, state); // outside the lock: counting HID collections may take a moment
             lock (_sync)
             {
                 if (_sessions.ContainsKey(device.Address))
@@ -82,7 +83,7 @@ internal sealed class PairingGuard : IDisposable
                     continue;
                 }
 
-                if (state.IsWorking)
+                if (types)
                 {
                     Log.Info($"[Guard] {trigger}: '{Name(device)}' {state}, {hid}: works, nothing to do");
                     continue;
@@ -100,6 +101,8 @@ internal sealed class PairingGuard : IDisposable
     /// </summary>
     public Task<bool> PullAsync(GuardedDevice device, TimeSpan duration, bool force, Action<string>? progress)
     {
+        var state = NativeBluetooth.GetState(device.Address);
+        bool types = !force && Types(device, state); // outside the lock: counting HID collections may take a moment
         lock (_sync)
         {
             if (_sessions.TryGetValue(device.Address, out var running))
@@ -108,8 +111,7 @@ internal sealed class PairingGuard : IDisposable
                 return running.Completion;
             }
 
-            var state = NativeBluetooth.GetState(device.Address);
-            if (state.IsWorking && !force)
+            if (types)
             {
                 return Task.FromResult(true);
             }
@@ -174,7 +176,7 @@ internal sealed class PairingGuard : IDisposable
         {
             ct.ThrowIfCancellationRequested();
             var state = NativeBluetooth.GetState(device.Address);
-            if (state.IsWorking && !(session.ForceFirstKnock && knocks == 0))
+            if (Types(device, state) && !(session.ForceFirstKnock && knocks == 0))
             {
                 workingSince ??= DateTime.UtcNow;
                 if (DateTime.UtcNow - workingSince >= session.Plan.StableFor)
@@ -224,7 +226,7 @@ internal sealed class PairingGuard : IDisposable
             await Task.Delay(TimeSpan.FromSeconds(unpaired ? 1 : 3), ct);
         }
 
-        return NativeBluetooth.GetState(device.Address).IsWorking;
+        return Types(device, NativeBluetooth.GetState(device.Address));
     }
 
     /// <summary>One attempt (tested with Apple Magic Keyboard, see tools/PairingProbe in the history).</summary>
@@ -255,12 +257,12 @@ internal sealed class PairingGuard : IDisposable
                 }
 
                 // Answered: give Windows a moment to bring HID up by itself.
-                for (int i = 0; i < 10 && !NativeBluetooth.GetState(device.Address).IsWorking; i++)
+                for (int i = 0; i < 10 && !Types(device, NativeBluetooth.GetState(device.Address)); i++)
                 {
                     await Task.Delay(1000, ct);
                 }
 
-                if (NativeBluetooth.GetState(device.Address).IsWorking)
+                if (Types(device, NativeBluetooth.GetState(device.Address)))
                 {
                     Log.Info($"[Guard] '{name}' knock {attempt}: answered a page and connected");
                     return false;
@@ -479,6 +481,28 @@ internal sealed class PairingGuard : IDisposable
         catch (Exception ex)
         {
             return $"HID ? ({ex.GetType().Name})";
+        }
+    }
+
+    /// <summary>
+    /// The device can type: connected, paired and with HID collections. "Connected" alone is not enough: a page (SDP
+    /// query) briefly connects the device too, and a keyboard whose HID does not start stays connected for a few
+    /// seconds without typing. Blocking. If the HID collections cannot be counted, the connection state decides.
+    /// </summary>
+    private static bool Types(GuardedDevice device, DeviceState state)
+    {
+        if (!state.IsWorking)
+        {
+            return false;
+        }
+
+        try
+        {
+            return CountHid(device) is not 0;
+        }
+        catch (Exception)
+        {
+            return true;
         }
     }
 
