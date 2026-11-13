@@ -161,77 +161,138 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
     }
 
+    /// <summary>
+    /// The menu, top to bottom: the keyboard (its state, or "Connect" when it is not here), problems that need an action
+    /// (a lost microphone), then the rarely used things in submenus: other devices and troubleshooting.
+    /// </summary>
     private void RebuildMenu()
     {
         var old = _menu.Items.Cast<ToolStripItem>().ToList();
         _menu.Items.Clear();
         old.ForEach(i => i.Dispose());
 
+        var keyboards = _settings.Devices.Where(d => d.RestoreAtStartup).ToList();
+        var others = _settings.Devices.Where(d => !d.RestoreAtStartup).ToList();
+
         if (_settings.Devices.Count == 0)
         {
             _menu.Items.Add(new ToolStripMenuItem(Strings.TrayNoDevices) { Enabled = false });
         }
 
-        foreach (var device in _settings.Devices)
+        foreach (var device in keyboards)
         {
-            bool busy = _busy.Contains(device.Key);
-            bool? connected = _monitor.IsConnected(device);
+            _menu.Items.Add(CreateKeyboardItem(device));
+        }
 
-            string text = busy ? Strings.TrayConnecting(device.DisplayName)
-                : connected == true ? Strings.TrayReconnect(device.DisplayName)
-                : connected == null ? Strings.TrayConnectNotFound(device.DisplayName)
-                : Strings.TrayConnect(device.DisplayName);
-
-            if (!busy && connected == true && _battery.TryGetValue(device.Key, out int level))
+        // A speaker or headset without its microphone (or the repair in progress).
+        if (_audioRestarting)
+        {
+            _menu.Items.Add(new ToolStripMenuItem(Strings.TrayRestartingAudio) { Enabled = false });
+        }
+        else if (_microphones.Lost.Count > 0)
+        {
+            var item = new ToolStripMenuItem(Strings.TrayRestoreMicrophone(LostMicrophoneNames()), null, async (_, _) => await RestartAudioAsync())
             {
-                text = Strings.TrayItemBattery(text, level);
-            }
-
-            var item = new ToolStripMenuItem(text)
-            {
-                Checked = connected == true,
-                Enabled = !busy,
-                ToolTipText = connected == true ? Strings.TrayReconnectTooltip : Strings.TrayConnectTooltip,
+                ToolTipText = Strings.TrayRestartAudioTooltip,
             };
-            if (_settings.Devices.Count == 1 && !busy)
-            {
-                item.Font = new Font(item.Font, FontStyle.Bold); // double-click action
-            }
-
-            item.Click += async (_, _) => await ReconnectAsync(device);
+            item.Font = new Font(item.Font, FontStyle.Bold);
             _menu.Items.Add(item);
         }
 
         _menu.Items.Add(new ToolStripSeparator());
-        // A speaker or headset without its microphone: the same action, named by what it is needed for.
-        bool lostMicrophone = !_audioRestarting && _microphones.Lost.Count > 0;
-        var audioItem = new ToolStripMenuItem(
-            _audioRestarting ? Strings.TrayRestartingAudio
-            : lostMicrophone ? Strings.TrayRestoreMicrophone(LostMicrophoneNames())
-            : Strings.TrayRestartAudio,
-            null, async (_, _) => await RestartAudioAsync())
+
+        if (others.Count > 0)
+        {
+            var submenu = new ToolStripMenuItem(Strings.TrayOtherDevices);
+            foreach (var device in others)
+            {
+                submenu.DropDownItems.Add(CreateDeviceItem(device));
+            }
+
+            _menu.Items.Add(submenu);
+        }
+
+        var diagnostics = new ToolStripMenuItem(Strings.TrayTroubleshooting);
+        foreach (var device in keyboards.Where(d => !_busy.Contains(d.Key) && _monitor.IsConnected(d) == true))
+        {
+            // Rarely needed, and it reinstalls the keyboard's HID service: not something to hit by accident.
+            diagnostics.DropDownItems.Add(new ToolStripMenuItem(Strings.TrayReconnect(device.DisplayName), null,
+                async (_, _) => await ReconnectAsync(device))
+            {
+                ToolTipText = Strings.TrayReconnectTooltip,
+            });
+        }
+
+        diagnostics.DropDownItems.Add(new ToolStripMenuItem(Strings.TrayRestartAudio, null, async (_, _) => await RestartAudioAsync())
         {
             Enabled = !_audioRestarting,
             ToolTipText = Strings.TrayRestartAudioTooltip,
-        };
-        if (lostMicrophone)
-        {
-            audioItem.Font = new Font(audioItem.Font, FontStyle.Bold);
-        }
-
-        _menu.Items.Add(audioItem);
-        _menu.Items.Add(new ToolStripMenuItem(Strings.TraySettings, null, (_, _) => ShowSettings()));
-
-        _menu.Items.Add(new ToolStripMenuItem(Strings.TrayOpenLog, null, (_, _) => OpenLog(Log.FilePath)));
+        });
+        diagnostics.DropDownItems.Add(new ToolStripSeparator());
+        diagnostics.DropDownItems.Add(new ToolStripMenuItem(Strings.TrayOpenLog, null, (_, _) => OpenLog(Log.FilePath)));
         if (File.Exists(Log.ServiceLogPath))
         {
-            _menu.Items.Add(new ToolStripMenuItem(Strings.TrayOpenServiceLog, null, (_, _) => OpenLog(Log.ServiceLogPath)));
+            diagnostics.DropDownItems.Add(new ToolStripMenuItem(Strings.TrayOpenServiceLog, null, (_, _) => OpenLog(Log.ServiceLogPath)));
         }
+
+        _menu.Items.Add(diagnostics);
+        _menu.Items.Add(new ToolStripMenuItem(Strings.TraySettings, null, (_, _) => ShowSettings()));
         _menu.Items.Add(new ToolStripSeparator());
         _menu.Items.Add(new ToolStripMenuItem(Strings.TrayExit, null, (_, _) => ExitThread()));
 
         _tray.Icon = _busy.Count > 0 ? _iconBusy : _iconNormal;
         _tray.Text = BuildTooltip();
+    }
+
+    /// <summary>The keyboard: its state while it works here (a click does nothing), otherwise the action to bring it here.</summary>
+    private ToolStripMenuItem CreateKeyboardItem(SavedDevice device)
+    {
+        if (_busy.Contains(device.Key))
+        {
+            return new ToolStripMenuItem(Strings.TrayConnecting(device.DisplayName)) { Enabled = false };
+        }
+
+        bool? connected = _monitor.IsConnected(device);
+        if (connected == true)
+        {
+            string text = _battery.TryGetValue(device.Key, out int level) ? Strings.TrayItemBattery(device.DisplayName, level) : device.DisplayName;
+            return new ToolStripMenuItem(text) { Checked = true, ToolTipText = Strings.TrayKeyboardConnectedTooltip };
+        }
+
+        var item = new ToolStripMenuItem(
+            connected == null ? Strings.TrayConnectNotFound(device.DisplayName) : Strings.TrayConnect(device.DisplayName),
+            null, async (_, _) => await ReconnectAsync(device))
+        {
+            ToolTipText = Strings.TrayConnectTooltip,
+        };
+        item.Font = new Font(item.Font, FontStyle.Bold); // also the double-click action
+        return item;
+    }
+
+    /// <summary>Another device (experimental): "Connect" or, with a check mark, "Reconnect".</summary>
+    private ToolStripMenuItem CreateDeviceItem(SavedDevice device)
+    {
+        bool busy = _busy.Contains(device.Key);
+        bool? connected = _monitor.IsConnected(device);
+
+        string text = busy ? Strings.TrayConnecting(device.DisplayName)
+            : connected == true ? Strings.TrayReconnect(device.DisplayName)
+            : connected == null ? Strings.TrayConnectNotFound(device.DisplayName)
+            : Strings.TrayConnect(device.DisplayName);
+
+        if (!busy && connected == true && _battery.TryGetValue(device.Key, out int level))
+        {
+            text = Strings.TrayItemBattery(text, level);
+        }
+
+        var item = new ToolStripMenuItem(text)
+        {
+            Checked = connected == true,
+            Enabled = !busy,
+            ToolTipText = connected == true ? Strings.TrayReconnectTooltip : Strings.TrayConnectTooltip,
+        };
+        item.Click += async (_, _) => await ReconnectAsync(device);
+        return item;
     }
 
     private string BuildTooltip()
@@ -329,9 +390,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
             return;
         }
 
-        if (_settings.Devices.Count == 1)
+        // The keyboard is not here: bring it. Otherwise there is nothing urgent to do: open the settings.
+        var keyboard = _settings.Devices.FirstOrDefault(d => d.RestoreAtStartup && _monitor.IsConnected(d) != true);
+        if (keyboard is not null)
         {
-            await ReconnectAsync(_settings.Devices[0]);
+            await ReconnectAsync(keyboard);
         }
         else
         {

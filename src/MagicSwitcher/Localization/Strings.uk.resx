@@ -465,4 +465,13 @@
   <data name="PullHint" xml:space="preserve">
     <value>Якщо клавіатура спить — натисніть клавішу. Якщо вона підключена до іншого пристрою — вимкніть і ввімкніть її зараз.</value>
   </data>
+  <data name="TrayOtherDevices" xml:space="preserve">
+    <value>Інші пристрої</value>
+  </data>
+  <data name="TrayTroubleshooting" xml:space="preserve">
+    <value>Діагностика</value>
+  </data>
+  <data name="TrayKeyboardConnectedTooltip" xml:space="preserve">
+    <value>Підключена до цього комп'ютера. Примусове перепідключення — у «Діагностиці».</value>
+  </data>
 </root>

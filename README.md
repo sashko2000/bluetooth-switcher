@@ -16,7 +16,7 @@ It is also a **one-click reconnector for any other Bluetooth device** paired wit
   (Hands-Free) — no more Settings → Bluetooth → Disconnect → Connect;
 - **other multi-host keyboards and mice** (Logitech, Keychron, Microsoft…): pull them over from another computer;
 - **battery level** of headsets, speakers and BLE devices that report it;
-- **Restart Windows audio** in the tray menu: when sound or the microphone stops working everywhere and otherwise only
+- **Restart Windows audio** (tray menu → Troubleshooting): when sound or the microphone stops working everywhere and otherwise only
   a reboot would help.
 
 Tested with Apple Magic Keyboard A2450 (2021); the Fn driver supports Magic Keyboard 2015–2021.
@@ -47,7 +47,7 @@ needed). The app is not code-signed, so Windows SmartScreen may warn on the firs
 From then on:
 
 - to use the keyboard here after another device, click **Connect “Magic Keyboard”** in the tray menu (or double-click
-  the icon) and press a key on the keyboard — or turn it off and on;
+  the icon) and turn the keyboard off and on (if it was only asleep, pressing a key is enough);
 - after a restart, or when the PC is locked, just turn the keyboard off and on (or press a key): it types within
   about a minute, no dialog, even before you sign in.
 
@@ -126,10 +126,18 @@ the release are replaced right away. With the background service the remapper ru
 also works in windows started as administrator; without the service it runs in the tray app and not in those windows.
 It does not work on the sign-in and lock screens. If you used a `Scancode Map` for the same keys, remove it.
 
+## The tray menu
+
+- **Your keyboard**: its name and battery level with a check mark while it works here; **Connect “Name”** in bold when it
+  does not (double-clicking the icon does the same; otherwise a double click opens the settings).
+- **Restore the microphone of “Name”**: appears only while a speaker or headset is connected without its microphone.
+- **Other devices**: the devices checked on the experimental tab, if any.
+- **Troubleshooting**: reconnect the keyboard anyway, **Restart Windows audio**, the logs.
+
 ## Battery level
 
 If a connected device reports its battery level, it is shown in the menu item
-(“Reconnect “SRS-XB100” — battery 80%”) and in the tray icon tooltip. Sources, in order:
+(“Magic Keyboard — battery 80%”) and in the tray icon tooltip. Sources, in order:
 
 1. The value Windows shows in Settings → Bluetooth & devices (Hands-Free speakers and headsets, many BLE devices).
 2. The standard GATT Battery Service for BLE devices.
@@ -143,7 +151,7 @@ When the level drops to the configured threshold (15% by default, 0 turns it off
 
 On some laptops the audio driver occasionally gets stuck: the speakers, the microphone and Bluetooth audio stop working
 at once (on Intel Smart Sound laptops Bluetooth audio goes through the same audio DSP), turning the speaker off and on does
-not help, and a reboot does. **Restart Windows audio** in the tray menu restarts the Windows audio services
+not help, and a reboot does. **Restart Windows audio** (tray menu → **Troubleshooting**) restarts the Windows audio services
 (`AudioEndpointBuilder`, `Audiosrv` and the services that depend on them) and, while they are stopped, the audio DSP's
 Bluetooth devices (“Intel Smart Sound Technology for Bluetooth Audio / LE Audio”: when that path gets stuck, a speaker's
 microphone does not come back even after reconnecting all its audio profiles). Then it reconnects the selected speakers
@@ -165,11 +173,9 @@ seconds, also during a call; it needs the background service).
 
 1. In **Settings**, check any paired devices (the list comes from Windows: Classic and BLE): other multi-host
    keyboards, speakers, headphones, mice.
-2. Each of them gets an item in the tray icon menu:
+2. Each of them gets an item under **Other devices** in the tray icon menu:
    - **Connect “Name”** if the device is not connected to this PC;
    - **Reconnect “Name”** with a check mark if it is connected.
-
-   If only one device is selected, double-clicking the tray icon does the same.
 3. When you click the item:
    - **Classic (BR/EDR), not connected**:
      1. An uncached SDP query makes the adapter page the device.
@@ -265,10 +271,10 @@ git push origin v1.3.1
 | Path | Purpose |
 |---|---|
 | `%AppData%\MagicSwitcher\settings.json` | settings (selected devices and services, timeout, language, battery threshold) |
-| `%AppData%\MagicSwitcher\log.txt` | log (can be opened from the tray menu) |
+| `%AppData%\MagicSwitcher\log.txt` | log (tray menu → **Troubleshooting** → **Open log**) |
 | `%ProgramFiles%\MagicSwitcher\` | the service's copy of the app |
 | `%ProgramData%\MagicSwitcher\service.json` | devices the service restores, Apple keyboard top row choice |
-| `%ProgramData%\MagicSwitcher\service-log.txt` | service log (**Open service log** in the tray menu) |
+| `%ProgramData%\MagicSwitcher\service-log.txt` | service log (tray menu → **Troubleshooting** → **Open service log**) |
 | `%ProgramData%\MagicSwitcher\remap-log.txt` | log of the key remapper started by the service |
 
 ## Project structure

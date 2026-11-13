@@ -465,4 +465,13 @@
   <data name="PullHint" xml:space="preserve">
     <value>Если клавиатура спит — нажмите клавишу. Если она подключена к другому устройству — выключите и включите её сейчас.</value>
   </data>
+  <data name="TrayOtherDevices" xml:space="preserve">
+    <value>Другие устройства</value>
+  </data>
+  <data name="TrayTroubleshooting" xml:space="preserve">
+    <value>Диагностика</value>
+  </data>
+  <data name="TrayKeyboardConnectedTooltip" xml:space="preserve">
+    <value>Подключена к этому компьютеру. Принудительное переподключение — в «Диагностике».</value>
+  </data>
 </root>
