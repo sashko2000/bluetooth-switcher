@@ -278,8 +278,24 @@ internal sealed class PairingGuard : IDisposable
 
                 if (Types(device, NativeBluetooth.GetState(device.Address)))
                 {
-                    Log.Info($"[Guard] '{name}' knock {attempt}: answered a page and connected");
-                    return Knock.Other;
+                    // A keyboard that another host took looks exactly like a working one for about 5 seconds after a
+                    // page (connected, paired, HID collections present) and then drops: it rejects our key, but Windows
+                    // keeps the pairing, and paging again only repeats this. So it counts only if it holds.
+                    var held = System.Diagnostics.Stopwatch.StartNew();
+                    bool holds = true;
+                    while (holds && held.Elapsed < TimeSpan.FromSeconds(8))
+                    {
+                        await Task.Delay(1000, ct);
+                        holds = Types(device, NativeBluetooth.GetState(device.Address));
+                    }
+
+                    if (holds)
+                    {
+                        Log.Info($"[Guard] '{name}' knock {attempt}: answered a page and connected");
+                        return Knock.Other;
+                    }
+
+                    Log.Info($"[Guard] '{name}' knock {attempt}: answered a page, but the connection dropped after {held.Elapsed.TotalSeconds:0} s");
                 }
             }
 
@@ -564,7 +580,7 @@ internal sealed class PairingGuard : IDisposable
         };
 
         /// <summary>The tray waits for the answer, so it only needs a short confirmation.</summary>
-        public static Plan Request(TimeSpan duration) => new(TimeSpan.Zero, TimeSpan.FromSeconds(10), duration, TimeSpan.FromSeconds(5))
+        public static Plan Request(TimeSpan duration) => new(TimeSpan.Zero, TimeSpan.FromSeconds(10), duration, TimeSpan.FromSeconds(10))
         {
             // The user is waiting and may be turning the keyboard off and on right now: notice it within seconds.
             PageInterval = TimeSpan.FromSeconds(2),
@@ -594,7 +610,7 @@ internal sealed class PairingGuard : IDisposable
             Plan = Plan with
             {
                 Interval = TimeSpan.FromSeconds(10),
-                StableFor = TimeSpan.FromSeconds(5),
+                StableFor = TimeSpan.FromSeconds(10),
                 PageInterval = TimeSpan.FromSeconds(2),
                 SelfConnectWait = TimeSpan.FromSeconds(5),
             };
