@@ -208,7 +208,7 @@
     <value>MagicSwitcher — settings</value>
   </data>
   <data name="SettingsHint" xml:space="preserve">
-    <value>Check the devices (keyboards, speakers, headphones…) to show in the tray menu. Clicking a menu item connects the device; if it is already connected, it is disconnected and connected again. The device must be paired with this computer beforehand.</value>
+    <value>Check the devices (keyboards, speakers, headphones…) to show under “Other devices” in the tray menu. Clicking a menu item connects the device; if it is already connected, it is disconnected and connected again. The device must be paired with this computer beforehand.</value>
   </data>
   <data name="ColumnDevice" xml:space="preserve">
     <value>Device</value>
@@ -436,7 +436,7 @@
     <value>(not selected)</value>
   </data>
   <data name="KeyboardHint" xml:space="preserve">
-    <value>The keyboard gets a “Connect” item in the tray menu: it brings the keyboard to this computer after another device used it. Double-click the tray icon does the same when it is the only device in the menu.</value>
+    <value>The keyboard gets a “Connect” item in the tray menu: it brings the keyboard to this computer after another device used it. Double-clicking the tray icon does the same.</value>
   </data>
   <data name="ExperimentalNote" xml:space="preserve">
     <value>Experimental: one-click reconnect for other Bluetooth devices — speakers, headphones, other keyboards and mice. It depends on the device and does not work with every one.</value>

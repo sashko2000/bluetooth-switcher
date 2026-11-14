@@ -3,30 +3,34 @@
 **Apple Magic Keyboard on Windows, done right.** A small tray app for people who share one Magic Keyboard between a
 Windows PC and a Mac, an iPad, a phone or another PC:
 
-- **pulls the keyboard to this PC in one click** — no need to turn off Bluetooth on the other device;
+- **takes the keyboard back in one click**: click **Connect** in the tray and turn the keyboard off and on — it is paired
+  again within seconds, without the Windows dialog and without turning off Bluetooth on the other device;
 - **makes it type on the Windows sign-in screen**, even right after another device used it: Magic Keyboard keeps the
-  pairing key of only one host, and the optional background service pairs it again without the Windows dialog;
-- **installs Apple's keyboard driver** for the Fn key (Fn+Backspace = Delete, media keys) and lets you choose whether
-  the top row sends F1–F12 or media keys by default;
+  pairing key of only one host, and the optional background service pairs it again by itself;
+- **installs Apple's keyboard driver** for the Fn key (Fn+Backspace = Delete, media keys) and adds **Fn Lock**:
+  Fn+Esc switches the top row between F-keys and media keys;
+- **remaps keys of the Apple keyboard only** (Caps Lock, Control, Option, Command, Shift) — your other keyboards stay
+  as they are;
 - **shows the battery level** of the keyboard in the tray and warns when it runs low.
 
-It is also a **one-click reconnector for any other Bluetooth device** paired with Windows:
+It also helps with Bluetooth audio:
 
-- **speakers and headphones**: disconnect and connect again in one click, e.g. when a speaker “forgets” its microphone
-  (Hands-Free) — no more Settings → Bluetooth → Disconnect → Connect;
-- **other multi-host keyboards and mice** (Logitech, Keychron, Microsoft…): pull them over from another computer;
-- **battery level** of headsets, speakers and BLE devices that report it;
-- **Restart Windows audio** (tray menu → Troubleshooting): when sound or the microphone stops working everywhere and otherwise only
-  a reboot would help.
+- **notices a speaker or headset that lost its microphone** (“Connected audio” instead of “Connected mic, audio”) and
+  brings it back in one click, or automatically;
+- **Restart Windows audio** (tray menu → Troubleshooting): when sound or the microphone stops working everywhere and
+  otherwise only a reboot would help.
+
+And, as an experimental extra, it is a **one-click reconnector for other Bluetooth devices** paired with Windows: other
+multi-host keyboards and mice (Logitech, Keychron, Microsoft…), speakers and headphones, with their battery level.
 
 Tested with Apple Magic Keyboard A2450 (2021); the Fn driver supports Magic Keyboard 2015–2021.
 
 <p align="center">
-  <img src="docs/tray-menu.png" alt="Tray menu: reconnect Magic Keyboard (battery 38%), connect a speaker" width="324">
+  <img src="docs/tray-menu.png" alt="Tray menu: Magic Keyboard with its battery level, Restore the microphone of a speaker, Troubleshooting submenu" width="551">
 </p>
 
 <p align="center">
-  <img src="docs/settings.png" alt="Settings: devices, services to reconnect, background service, Apple Magic Keyboard driver" width="600">
+  <img src="docs/settings.png" alt="Settings, Keyboard tab: the keyboard, restore at startup and sign-in, Apple driver, top row keys, key remapping, background service" width="700">
 </p>
 
 ## Download
@@ -48,8 +52,9 @@ From then on:
 
 - to use the keyboard here after another device, click **Connect “Magic Keyboard”** in the tray menu (or double-click
   the icon) and turn the keyboard off and on (if it was only asleep, pressing a key is enough);
-- after a restart, or when the PC is locked, just turn the keyboard off and on (or press a key): it types within
-  about a minute, no dialog, even before you sign in.
+- after a restart, or when the PC is locked: if the keyboard stayed with this PC, just press a key; if another device
+  used it meanwhile, turn it off and on once the sign-in screen has been up for about half a minute. No dialog, even
+  before you sign in.
 
 ## Sign-in screen and switching back: the background service
 
@@ -61,22 +66,25 @@ The optional Windows service fixes that. Install it in **Settings → Background
 (one administrator confirmation) and check **Restore at startup and sign-in** for the keyboard. The service:
 
 - reacts to events: Windows startup, sign-in, unlock, wake from sleep, the display turning on, and **Connect** in the tray;
-- first gives the keyboard time to reconnect by itself (45 seconds after startup or wake: knocking earlier breaks a
-  connection that is coming up and makes Windows drop the key), then “knocks” every 20–30 seconds for up to 10 minutes;
-- if Windows still has the key, first pages the keyboard without touching the pairing (an uncached SDP query). Only if it
-  answers but still does not connect — it is awake and rejects the key, e.g. after a phone used it — the service
-  reinstalls the HID service. Reinstalling HID while the keyboard sleeps would make Windows remove a good pairing
-  (when the first HID connection fails, Windows deletes the link key); a sleeping keyboard reconnects by itself when you
-  press a key. If the key is gone (or Windows forgot the device),
-  pairs again with bonding (`BluetoothAuthenticateDeviceEx`), answers the pairing request itself
-  (`BluetoothRegisterForAuthenticationEx`) so no dialog appears, and enables the HID service;
-- keeps watching until the keyboard has worked for a minute without interruption: right after startup it may connect
-  and drop again (Windows then removes the pairing), and the service pairs it again right away;
+- first gives the keyboard time to reconnect by itself (45 seconds after startup or wake, 15 seconds after the other
+  events, none for **Connect**), then watches it for up to 10 minutes;
+- while Windows still has the key, it only *pages* the keyboard (an uncached SDP query, which does not touch the
+  pairing) every few seconds. No answer means the keyboard is asleep, off or busy with the other host: nothing is
+  changed, and a sleeping keyboard reconnects by itself when you press a key;
+- a keyboard that answers but does not stay connected was taken by another host. For a few seconds it looks exactly
+  like a working one (connected, paired, HID collections present) and then drops, and Windows keeps the useless key.
+  Waiting for Windows to notice takes too long — the keyboard accepts a new pairing only for a short while after it is
+  turned on — so the service removes the old pairing itself, pairs again with bonding (`BluetoothAuthenticateDeviceEx`),
+  answers the pairing request itself (`BluetoothRegisterForAuthenticationEx`) so no dialog appears, and enables the
+  HID service. From turning the keyboard on to typing takes 10–20 seconds;
+- it never reinstalls the HID service of a keyboard that may be asleep: the failed first HID connection would make
+  Windows delete a good pairing;
+- keeps watching until the keyboard has worked for a minute without interruption;
 - never knocks outside these events: when you hand the keyboard to a phone on purpose, it is left alone. Every event,
   the keyboard state and the service's decision are written to the service log.
 
-After another host used the keyboard, turn the keyboard off and on (or press a key) on the sign-in screen: it only
-listens for a new host for a short while after it wakes up. It types within about a minute.
+After another host used the keyboard, turn it off and on once: it accepts a new host only shortly after it is turned
+on. If it does not start typing within 20 seconds, turn it off and on again.
 
 > 🔒 Automatic confirmation skips the pairing code check. The service confirms only devices you selected and only while
 > it is restoring them after one of the events above; at any other time Windows asks as usual.
@@ -171,7 +179,7 @@ seconds, also during a call; it needs the background service).
 
 ## Other devices and how connecting works
 
-1. In **Settings**, check any paired devices (the list comes from Windows: Classic and BLE): other multi-host
+1. On the **Other devices (experimental)** tab of the settings, check any paired devices (the list comes from Windows: Classic and BLE): other multi-host
    keyboards, speakers, headphones, mice.
 2. Each of them gets an item under **Other devices** in the tray icon menu:
    - **Connect “Name”** if the device is not connected to this PC;
@@ -207,7 +215,8 @@ took the keyboard over (see above), and the tray's **Connect** goes through the 
 
 - **Keyboard** tab: your keyboard and **Restore at startup and sign-in**; the Apple driver, **top row** mode and
   **key remapping**; the **background service** (install, update or remove).
-- **General** tab: language, low battery warning threshold, notifications and start with Windows.
+- **General** tab: language, low battery warning threshold, notifications, start with Windows, and what to do when a
+  speaker or headset loses its microphone (notify; restore automatically).
 - **Other devices (experimental)** tab: other devices to show in the tray menu for a one-click reconnect, the
   **services to reconnect** for each Classic device (Automatic, or a manual selection) and the connection timeout.
 
@@ -245,8 +254,8 @@ dotnet publish src/MagicSwitcher -c Release -r win-x64 --self-contained true -p:
 ## Administrator rights
 
 The app runs without administrator rights. The actions that need them — reinstalling device services
-(`BluetoothSetServiceState` may return `ERROR_ACCESS_DENIED`), installing the Apple keyboard driver and changing its
-Fn mode — go through the background service when it is installed. Without the service, the app asks for a UAC
+(`BluetoothSetServiceState` may return `ERROR_ACCESS_DENIED`), installing the Apple keyboard driver and restarting
+Windows audio — go through the background service when it is installed. Without the service, the app asks for a UAC
 confirmation when Windows denies an action.
 
 ## Upgrading from Bluetooth Switcher
@@ -273,7 +282,8 @@ git push origin v1.4.0
 | `%AppData%\MagicSwitcher\settings.json` | settings (selected devices and services, timeout, language, battery threshold) |
 | `%AppData%\MagicSwitcher\log.txt` | log (tray menu → **Troubleshooting** → **Open log**) |
 | `%ProgramFiles%\MagicSwitcher\` | the service's copy of the app |
-| `%ProgramData%\MagicSwitcher\service.json` | devices the service restores, Apple keyboard top row choice |
+| `%ProgramData%\MagicSwitcher\service.json` | devices the service restores, remapped keys |
+| `%ProgramData%\MagicSwitcher\top-row.txt` | top row mode (Fn Lock): F-keys or media keys |
 | `%ProgramData%\MagicSwitcher\service-log.txt` | service log (tray menu → **Troubleshooting** → **Open service log**) |
 | `%ProgramData%\MagicSwitcher\remap-log.txt` | log of the key remapper started by the service |
 
@@ -285,6 +295,8 @@ src/MagicSwitcher/
 ├─ Bluetooth/
 │  ├─ BluetoothManager.cs         — device enumeration and reconnect logic
 │  ├─ DeviceStatusMonitor.cs      — tracks ConnectionStatus for the menu
+│  ├─ AudioEndpoints.cs           — does a speaker or headset have its microphone
+│  ├─ MicrophoneWatcher.cs        — notices connected audio devices that lost it
 │  ├─ NativeBluetooth.cs          — P/Invoke to bthprops.cpl (service reinstall)
 │  ├─ NativeBluetooth.Pairing.cs  — pairing without the Windows dialog
 │  ├─ BatteryReader.cs            — battery level: Windows property, BLE GATT
@@ -303,13 +315,16 @@ src/MagicSwitcher/
 │  └─ WindowsAudio.cs             — restarts the audio services and Intel Smart Sound Bluetooth audio
 ├─ Keyboard/
 │  ├─ AppleKeyboardDriver.cs      — downloads/installs Apple's keyboard driver, Fn mode
-│  ├─ KeyRemapper.cs              — remaps keys of Apple keyboards only (hook + raw input)
+│  ├─ KeyRemapper.cs              — remaps keys of Apple keyboards only (hook + raw input), Fn Lock
+│  ├─ AppleTopRow.cs              — top row mode shared by the remapper, the service and the tray
 │  └─ KeyMapping.cs
 ├─ Localization/                  — Strings*.resx (en/ru/uk), language selection
 └─ UI/
    ├─ TrayApplicationContext.cs   — tray icon and menu
    ├─ SettingsForm.cs             — settings window
+   ├─ KeyRemapForm.cs             — key remapping dialog
    └─ TrayIconFactory.cs          — icon drawn at runtime
+tools/InputProbe/                 — logs the order of keyboard hook, raw input and HID reports (used to design the remapper)
 ```
 
 ## License
