@@ -73,6 +73,33 @@ From then on:
   used it meanwhile, turn it off and on once the sign-in screen has been up for about half a minute. No dialog, even
   before you sign in.
 
+## How it compares to the alternatives
+
+| | MagicSwitcher | Apple's Boot Camp driver alone | [Magic Utilities](https://magicutilities.net/) | [PowerToys Keyboard Manager](https://learn.microsoft.com/windows/powertoys/keyboard-manager) | AutoHotkey + [AutoHotInterception](https://github.com/evilC/AutoHotInterception) |
+|---|---|---|---|---|---|
+| Price | free, open source (MIT) | free, proprietary | paid license per device (one or two years), 28-day trial | free, open source | free, open source |
+| Fn key (Fn+Backspace = Delete, media keys) | yes — installs Apple's driver for you | yes, but you have to extract and install it yourself | yes | no | no |
+| Fn Lock (F-keys ↔ media keys) | Fn+Esc; F1/F2 always need Fn | registry setting, keyboard restart | yes | — | — |
+| Remap keys of the Apple keyboard **only** | yes, no extra driver | no | modifier keys can be remapped | no: applies to all keyboards | yes, with a third-party kernel driver (Interception) and your own script |
+| Remapping in administrator windows | yes, with the background service | — | not checked | only if PowerToys runs as administrator | yes |
+| Keyboard taken by a Mac, iPad or phone: pair again without the Windows dialog, also on the sign-in screen | **yes** | no | not something its documentation describes | no | no |
+| Battery level in the tray, low battery warning | yes | no | yes | no | no |
+| Other Apple devices (Magic Mouse, Magic Trackpad), USB-C and numeric keypad models, Eject key | no | partly | yes | — | — |
+
+In short:
+
+- **Magic Utilities** is a polished commercial product that covers more Apple hardware (mouse, trackpad, newer keyboard
+  models). If you need those, it is the better choice. MagicSwitcher is free and open source, and focuses on what
+  people who share one Magic Keyboard between a PC and other devices run into: getting the keyboard back quickly
+  and typing on the sign-in screen.
+- **PowerToys Keyboard Manager** and a registry `Scancode Map` remap keys on every keyboard at once, so a laptop keyboard
+  or a second keyboard changes too.
+- **AutoHotInterception** can do per-keyboard remapping and much more, but needs a kernel driver and a script.
+
+Limits of MagicSwitcher to know about: it is tested with one keyboard model (Magic Keyboard A2450, 2021); the Fn driver
+supports Magic Keyboard 2015–2021; remapping and Fn Lock do not work on the sign-in and lock screens; the app is not
+code-signed yet. The comparison reflects the products' own documentation as of November 2026 — corrections are welcome.
+
 ## Sign-in screen and switching back: the background service
 
 Some multi-host keyboards — Apple Magic Keyboard in particular — keep the pairing key of only one host. After the
