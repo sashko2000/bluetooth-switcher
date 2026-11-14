@@ -15,7 +15,7 @@
     <RootNamespace>MagicSwitcher</RootNamespace>
     <AssemblyName>MagicSwitcher</AssemblyName>
     <Product>MagicSwitcher</Product>
-    <Version>1.3.1</Version>
+    <Version>1.4.0</Version>
     <NeutralLanguage>en</NeutralLanguage>
     <!-- Ship only the translated UI languages (skips framework satellite assemblies for other cultures). -->
     <SatelliteResourceLanguages>en;ru;uk</SatelliteResourceLanguages>
