@@ -36,8 +36,25 @@ Tested with Apple Magic Keyboard A2450 (2021); the Fn driver supports Magic Keyb
 ## Download
 
 Get the latest `MagicSwitcher-<version>-win-x64.zip` from the
-[Releases](../../releases) page, unzip it and run `MagicSwitcher.exe` (no installation and no .NET runtime
-needed). The app is not code-signed, so Windows SmartScreen may warn on the first start: **More info → Run anyway**.
+[Releases](../../releases) page, unzip the `MagicSwitcher` folder anywhere and run `MagicSwitcher.exe` in it
+(no installation and no .NET runtime needed).
+
+### Windows or your antivirus may warn about it
+
+The app is **not code-signed** yet, so Windows SmartScreen may warn on the first start (**More info → Run anyway**),
+and an antivirus may flag the download: a new, unsigned program that does what this one does looks suspicious to
+heuristics. What it does, and why:
+
+- a **low-level keyboard hook** — to remap keys and switch the top row of the Apple keyboard only (nothing is recorded
+  or sent anywhere);
+- a **Windows service running as LocalSystem** — to pair the keyboard again before you sign in, and a helper it starts
+  in your session so remapping also works in administrator windows;
+- **downloads Apple's Boot Camp update from Apple's servers** and installs the keyboard driver from it — only when you
+  click **Install driver**.
+
+The app makes no other network connections and collects no data. All the source code is here, and the release archives
+are built from it by GitHub Actions (`.github/workflows/release.yml`). If your antivirus flags a release, please open
+an issue with the detection name.
 
 ## Quick start with Magic Keyboard
 
@@ -247,8 +264,8 @@ dotnet run --project src/MagicSwitcher
 # Publish to a folder (requires the .NET 10 Desktop Runtime)
 dotnet publish src/MagicSwitcher -c Release -r win-x64 --self-contained false -o publish
 
-# Or fully self-contained
-dotnet publish src/MagicSwitcher -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
+# Or fully self-contained (this is how the releases are built: a folder, not a single-file exe)
+dotnet publish src/MagicSwitcher -c Release -r win-x64 --self-contained true -o publish
 ```
 
 ## Administrator rights
@@ -271,8 +288,8 @@ Pushing a version tag builds the app on GitHub Actions and publishes a release w
 (`.github/workflows/release.yml`); the version is taken from the tag:
 
 ```powershell
-git tag v1.4.0
-git push origin v1.4.0
+git tag v1.4.1
+git push origin v1.4.1
 ```
 
 ## Files

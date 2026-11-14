@@ -22,13 +22,15 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Publish (self-contained single exe)
+      # A plain folder, not a single self-extracting exe: single-file bundles of unsigned apps are a common
+      # false positive of antivirus machine-learning models (the bundle hides the managed code from static analysis).
+      - name: Publish (self-contained folder)
         shell: pwsh
         run: |
           $version = $env:TAG.TrimStart('v')
           dotnet publish src/MagicSwitcher -c Release -r win-x64 --self-contained true `
-            -p:PublishSingleFile=true -p:Version=$version -o publish
-          Compress-Archive -Path publish/MagicSwitcher.exe -DestinationPath "MagicSwitcher-$version-win-x64.zip"
+            -p:PublishSingleFile=false -p:DebugType=none -p:Version=$version -o publish/MagicSwitcher
+          Compress-Archive -Path publish/MagicSwitcher -DestinationPath "MagicSwitcher-$version-win-x64.zip"
 
       - name: Create release
         shell: pwsh

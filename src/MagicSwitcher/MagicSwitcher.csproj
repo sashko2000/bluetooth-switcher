@@ -15,7 +15,15 @@
     <RootNamespace>MagicSwitcher</RootNamespace>
     <AssemblyName>MagicSwitcher</AssemblyName>
     <Product>MagicSwitcher</Product>
-    <Version>1.4.0</Version>
+    <Version>1.4.1</Version>
+    <!-- File properties (Details tab): an exe without them looks anonymous to people and to antivirus heuristics. -->
+    <AssemblyTitle>MagicSwitcher</AssemblyTitle>
+    <Description>Apple Magic Keyboard on Windows: tray app and background service</Description>
+    <Company>Oleksandr Postoliuk</Company>
+    <Authors>Oleksandr Postoliuk</Authors>
+    <Copyright>Copyright © 2026 Oleksandr Postoliuk. MIT License.</Copyright>
+    <RepositoryUrl>https://github.com/sashko2000/magic-switcher</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/sashko2000/magic-switcher</PackageProjectUrl>
     <NeutralLanguage>en</NeutralLanguage>
     <!-- Ship only the translated UI languages (skips framework satellite assemblies for other cultures). -->
     <SatelliteResourceLanguages>en;ru;uk</SatelliteResourceLanguages>
